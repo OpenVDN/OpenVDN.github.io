@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Video Delta Net is a hybrid architecture that combines softmax attention and linear attention for faster long video generation.">
+  <title>VideoDeltaNet on MiniMax H3</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2710%27 fill=%27%23f9f6ef%27/%3E%3Cpath d=%27M24 14H15v36h9M40 14h9v36h-9%27 fill=%27none%27 stroke=%27%23161513%27 stroke-width=%275%27/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;family=Assistant:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./h3-vda-blog.css?v=20260902-60">
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams'] },
+      tex: {
+        packages: { '[+]': ['ams'] },
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        processEnvironments: true,
+        tags: 'ams',
+        macros: {
+          diag: '\\operatorname{Diag}',
+          tr: '\\operatorname{tr}',
+          rank: '\\operatorname{rank}',
+          R: '\\mathbb{R}'
+        }
+      },
+      chtml: {
+        scale: 1.02,
+        matchFontHeight: false,
+        displayAlign: 'center'
+      },
+      options: {
+        enableMenu: false,
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+  </script>
+  <script defer src="./prompt-data.js?v=20260902-1"></script>
+  <script defer src="./h3-vda-blog.js?v=20260902-22"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body id="top" class="article-page">
+  <a class="skip-link" href="#article">Skip to article</a>
+
+  <header class="site-header" aria-label="Site navigation">
+    <a class="site-brand" href="./h3-vda-blog.html" aria-label="Video DeltaNet home">
+      <span class="site-brand-logo" aria-hidden="true">
+        <img src="./assets/brand/cropped/vdn-mark-black-on-white-cropped.png" alt="">
+      </span>
+      <span class="brand-wordmark">OpenVDN</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#vdn-h3">Architecture</a>
+      <a href="#latency">Performance</a>
+        <a href="#references">References</a>
+    </nav>
+  </header>
+
+  <main class="article-shell">
+    <section class="article-hero">
+      <div class="article-project-logo">
+        <img src="./assets/brand/cropped/vdn-mark-black-on-white-cropped.png" alt="Video DeltaNet">
+      </div>
+      <h1>VideoDeltaNet on Minimax H3</h1>
+      <div class="article-resource-links" aria-label="Project resources">
+        <a class="article-resource-link" href="https://github.com/OpenVDN/vdn-minimax-h3" target="_blank" rel="noopener noreferrer">
+          <svg class="article-resource-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M12 .7A11.5 11.5 0 0 0 8.36 23.1c.58.1.79-.25.79-.56v-2.2c-3.22.7-3.9-1.37-3.9-1.37-.52-1.35-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.3-5.27-1.29-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.3-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18A10.96 10.96 0 0 1 12 6.14c.98 0 1.94.13 2.85.38 2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.75.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.28 5.68.42.36.79 1.07.79 2.16v3.22c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"></path>
+          </svg>
+          <span>Code</span>
+        </a>
+        <a class="article-resource-link" href="https://huggingface.co/OpenVDN/vdn-minimax-h3" target="_blank" rel="noopener noreferrer">
+          <span class="article-resource-icon huggingface-icon" aria-hidden="true">🤗</span>
+          <span>Weight</span>
+        </a>
+      </div>
+      <p class="article-subtitle">
+        <span>90× speedup on H200s and 75× speedup on B200s.</span>
+        <span>Live Text-to-Video Generation. Near Lossless Quality</span>
+      </p>
+      <p class="article-authors">
+        <a href="https://haochengxi.github.io/" target="_blank" rel="noopener noreferrer">Haocheng Xi</a><sup>1,*</sup>,
+        <a href="https://ymingxie.github.io/" target="_blank" rel="noopener noreferrer">Yiming Xie</a><sup>2</sup>,
+        <a href="https://tarzanzhao.github.io/" target="_blank" rel="noopener noreferrer">Hexu Zhao</a><sup>2</sup>,
+        <a href="https://therealevan.github.io/" target="_blank" rel="noopener noreferrer">Yiwen Zhang</a><sup>2</sup>,
+        <a href="mailto:liu.michael@berkeley.edu">Michael Liu</a><sup>1</sup>,
+        <a href="https://www.creavin.ie/" target="_blank" rel="noopener noreferrer">Thomas Creavin</a><sup>2</sup>,
+        <br>
+        <a href="https://vcresearch.berkeley.edu/faculty/kurt-keutzer" target="_blank" rel="noopener noreferrer">Kurt Keutzer</a><sup>1</sup>,
+        <a href="https://xiuyuli.com/" target="_blank" rel="noopener noreferrer">Xiuyu Li</a><sup>2</sup>,
+        <a href="https://lvzhaoyang.github.io/" target="_blank" rel="noopener noreferrer">Zhaoyang Lv</a><sup>2</sup>,
+        <a href="https://www.chenfengx.com/" target="_blank" rel="noopener noreferrer">Chenfeng Xu</a><sup>3</sup>,
+        <a href="https://havenfeng.github.io/" target="_blank" rel="noopener noreferrer">Haiwen Feng</a><sup>1,2</sup>.
+      </p>
+      <p class="article-affiliations" aria-label="Author affiliations">
+        <span><sup>1</sup> UC Berkeley</span>
+        <span><sup>2</sup> Impossible, Inc.</span>
+        <span><sup>3</sup> UT Austin</span>
+      </p>
+      <p class="article-contribution-note"><sup>*</sup> Part of the work done during an internship at Impossible, Inc.</p>
+    </section>
+
+    <article id="article" class="article-content">
+      <section id="introduction">
+        <div class="vdn-result-showcase" data-vdn-result-showcase data-videos="hf_test_5_vdn_stage_d_step250_8nfe.mp4,hf_test_1_vdn_stage_d_step250_8nfe.mp4,hf_test_18_vdn_stage_d_step250_8nfe.mp4,auto-prompt-2178-1788242234967.mp4,hf_test_78_vdn_stage_d_step250_8nfe.mp4,auto-prompt-1303-1788220631674.mp4,chat-prompt-1336-1788221104709.mp4,hf_test_148_vdn_stage_d_step250_8nfe.mp4,hf_test_182_vdn_stage_d_step250_8nfe.mp4,hf_test_190_vdn_stage_d_step250_8nfe.mp4">
+          <div class="vdn-result-strip-controls" aria-label="Gallery navigation">
+            <button type="button" data-vdn-strip-prev aria-label="Scroll video results left">←</button>
+            <output data-vdn-strip-status aria-live="polite">01 / 10</output>
+            <button type="button" data-vdn-strip-next aria-label="Scroll video results right">→</button>
+          </div>
+          <div class="vdn-result-strip" data-vdn-result-strip role="list" tabindex="0" aria-label="VDN-H3 selected video results"></div>
+        </div>
+
+        <h2>Video DeltaNet: Near-Lossless Hybrid Attention for Video Models</h2>
+
+        <p>Attention is the dominant cost of video generation<sup><a href="#ref-sparse-videogen">[1]</a>,<a href="#ref-sparse-videogen2">[2]</a></sup>. On a frontier omni-model like MiniMax H3<sup><a href="#ref-h3-release">[3]</a></sup>, softmax attention over long token sequences accounts for more than 85% of total runtime. To overcome this, frontier LLMs replace softmax, whose cost is quadratic in sequence length, with linear attention<sup><a href="#ref-gdn">[4]</a>,<a href="#ref-kda">[5]</a></sup>. While significantly faster, this comes at the cost of generation quality. For instance, linear attention struggles to maintain global features like subject identity, scene layout, and temporal dependencies over long sequences<sup><a href="#ref-sana">[8]</a>,<a href="#ref-sana-15">[9]</a>,<a href="#ref-sana-video">[10]</a>,<a href="#ref-sana-wm">[11]</a></sup>.</p>
+
+        <p>We propose a hybrid attention architecture<sup><a href="#ref-sla">[6]</a>,<a href="#ref-sla2">[7]</a></sup>, Video DeltaNet (VDN), that approaches the speed of linear attention while maintaining near-lossless quality. We have applied this architecture improvement to the MiniMax H3 model to train VDN-H3. In only 11.23 seconds our model can produce a 14.4 second video clip that is visually nearly indistinguishable from the original H3's output. In effect, it can stream H3-quality generated content continuously on 8 NVIDIA B200.</p>
+
+        <p>Here is what VDN-H3 produces. Each clip is generated in 11.23 seconds, less time than it takes to watch. This speedup comes with near-lossless visual quality compared to the original MiniMax H3 and demonstrates higher quality and better instruction-following ability than MiniMax FastH3.</p>
+
+        <div class="qualitative-results is-featured" id="qualitative-results">
+          <div class="qualitative-results-head">
+            <div class="qualitative-results-heading">
+              <span>Selected qualitative comparisons</span>
+              <p>Enlarge to view the text prompt and inspect details.</p>
+            </div>
+          </div>
+          <div class="comparison-gallery" data-comparison-gallery data-samples="21,117,3" data-label-prefix="Selected Sample" data-index-start="1" role="list"></div>
+        </div>
+
+      </section>
+
+      <section id="vdn-h3">
+        <h2>Local Softmax and Long-Range Linear Memory</h2>
+
+        <p>Video DeltaNet splits the video–video attention into <strong>two complementary branches</strong>: a sliding-window softmax branch for local frame pairs and a linear branch for long-range context.</p>
+
+        <p>The bidirectional sliding window computes exact attention between nearby frames, preserving fine-grained local detail and promoting short-term temporal stability. Specifically, sets of five consecutive latent frames are grouped into chunks, following the original H3 architecture. Each chunk attends to itself, the previous chunk, and the following chunk.</p>
+
+        <p>We further augment the softmax branch with <strong>4-way boundary anchors</strong> to maintain global consistency.<sup><a href="#ref-streamingllm">[13]</a></sup> Every frame attends to all tokens in the first and last frames—the <em>boundary frames</em>—and both boundary frames attend to every other frame. This design adds only <strong>3.57% attention density</strong>, yet substantially improves long-range stability.</p>
+
+        <!-- Archived for possible restoration; templates are not rendered or initialized. -->
+        <template id="archived-attention-figure">
+        <figure class="viz-card attention-figure" id="attention-figure" aria-label="Interactive attention coverage figure">
+          <div class="viz-head">
+            <div>
+              <span class="viz-kicker">Interactive figure 01</span>
+            </div>
+            <span class="viz-hint">Hover to inspect</span>
+          </div>
+          <div class="attention-layout">
+            <div class="attention-map-wrap">
+              <div class="axis-label axis-y">Query sequence</div>
+              <div class="attention-share" aria-label="Current split between Softmax and Linear computation">
+                <span class="share-label softmax-share">Softmax <strong id="softmax-percent">18%</strong></span>
+                <span class="share-track" aria-hidden="true"><i id="attention-share-fill"></i></span>
+                <span class="share-label linear-share">Linear <strong id="linear-percent">82%</strong></span>
+              </div>
+              <div class="attention-map" id="attention-map" role="img" aria-label="Schematic video attention map with a local Softmax band and distant bidirectional Linear regions"></div>
+              <div class="axis-label axis-x">Key sequence</div>
+              <div class="viz-tooltip" id="attention-tooltip" role="status" aria-live="polite"></div>
+            </div>
+            <div class="attention-copy">
+              <div class="legend-stack" aria-label="Legend">
+                <button class="legend-item is-active" type="button" data-attn-filter="all">
+                  <span class="legend-swatch split"></span><span><strong>Complete coverage</strong></span>
+                </button>
+                <button class="legend-item" type="button" data-attn-filter="softmax">
+                  <span class="legend-swatch softmax"></span><span><strong>Softmax path</strong></span>
+                </button>
+                <button class="legend-item" type="button" data-attn-filter="linear">
+                  <span class="legend-swatch linear"></span><span><strong>Linear path</strong></span>
+                </button>
+              </div>
+              <label class="range-control" for="radius-control">
+                <span class="range-control-head">
+                  <span>Sliding Window Width · <output id="radius-output">3 frames</output></span>
+                  <output id="attention-summary">18% Softmax / 82% Linear</output>
+                </span>
+                <input id="radius-control" type="range" min="1" max="9" value="3" step="2">
+              </label>
+            </div>
+          </div>
+        </figure>
+        </template>
+
+        <!-- Editorial note: Revisit placement of the ShortConv detail later. Deferred text: before frame-wise state reduction, apply a separable depthwise ShortConv to K and V (5x5 spatial, then five-frame temporal) while leaving Q token-specific. -->
+
+        <p>We process distant context using <strong>bidirectional linear attention</strong>. For Frame \(t\), the forward state \(S_t^{\rightarrow}\) summarizes frames before the local Softmax window, while the reverse state \(S_t^{\leftarrow}\) summarizes those after it. Their temporal regions are disjoint, and do not include the frames covered by sliding window softmax and boundary frames. This allows the query \(q_t\) to read states from both sides and add their outputs without double-counting any video frames.</p>
+
+        <p>Here is how the mechanism works:</p>
+
+        <figure class="viz-card state-build-figure" id="state-build-figure" aria-label="Diagram showing how a selected frame reads local and distant context">
+          <div class="viz-head state-build-head">
+            <ol class="state-progress" aria-label="Directional-state animation progress">
+              <li class="state-progress-step is-reached is-current" data-state-step="1" aria-current="step"><button class="state-progress-button" type="button" data-state-step-button="1" aria-label="Jump to the Input stage"><span>Input</span></button></li>
+              <li class="state-progress-step" data-state-step="2"><button class="state-progress-button" type="button" data-state-step-button="2" aria-label="Jump to the Local stage"><span>Local</span></button></li>
+              <li class="state-progress-step" data-state-step="3"><button class="state-progress-button" type="button" data-state-step-button="3" aria-label="Jump to the Forward stage"><span>Forward</span></button></li>
+              <li class="state-progress-step" data-state-step="4"><button class="state-progress-button" type="button" data-state-step-button="4" aria-label="Jump to the Reverse stage"><span>Reverse</span></button></li>
+              <li class="state-progress-step" data-state-step="5"><button class="state-progress-button" type="button" data-state-step-button="5" aria-label="Jump to the Align stage"><span>Align</span></button></li>
+              <li class="state-progress-step" data-state-step="6"><button class="state-progress-button" type="button" data-state-step-button="6" aria-label="Jump to the Readout stage"><span>Readout</span></button></li>
+            </ol>
+          </div>
+
+          <div class="state-build-stage" role="img" aria-label="The upper lane shows 15 latent frames, with frames 6 through 8 and boundary frames 0 and 14 retained by Softmax for query frame 7. The lower lane shows forward and reverse Linear Attention states. The remaining frames enter those states before the hybrid readout.">
+            <span class="state-lane-label state-lane-label-frames">latent frames · Softmax path</span>
+            <span class="state-lane-label state-lane-label-memory">Linear Attention</span>
+
+            <div class="state-frame" data-frame="0" style="--x: 4%"><span>0</span></div>
+            <div class="state-frame" data-frame="1" style="--x: 10.57%"><span>1</span></div>
+            <div class="state-frame" data-frame="2" style="--x: 17.14%"><span>2</span></div>
+            <div class="state-frame" data-frame="3" style="--x: 23.71%"><span>3</span></div>
+            <div class="state-frame" data-frame="4" style="--x: 30.29%"><span>4</span></div>
+            <div class="state-frame" data-frame="5" style="--x: 36.86%"><span>5</span></div>
+            <div class="state-frame" data-frame="6" style="--x: 43.43%"><span>6</span></div>
+            <div class="state-frame is-selected" data-frame="7" style="--x: 50%"><span>7</span></div>
+            <div class="state-frame" data-frame="8" style="--x: 56.57%"><span>8</span></div>
+            <div class="state-frame" data-frame="9" style="--x: 63.14%"><span>9</span></div>
+            <div class="state-frame" data-frame="10" style="--x: 69.71%"><span>10</span></div>
+            <div class="state-frame" data-frame="11" style="--x: 76.29%"><span>11</span></div>
+            <div class="state-frame" data-frame="12" style="--x: 82.86%"><span>12</span></div>
+            <div class="state-frame" data-frame="13" style="--x: 89.43%"><span>13</span></div>
+            <div class="state-frame" data-frame="14" style="--x: 96%"><span>14</span></div>
+
+            <i class="soft-probe soft-probe-left" aria-hidden="true"></i>
+            <i class="soft-probe soft-probe-right" aria-hidden="true"></i>
+
+            <div class="direction-state direction-state-forward" aria-hidden="true">
+              <strong>S<sup>→</sup></strong><small>forward</small>
+            </div>
+            <div class="direction-state direction-state-reverse" aria-hidden="true">
+              <strong>S<sup>←</sup></strong><small>reverse</small>
+            </div>
+
+            <div class="state-joined-memory" aria-hidden="true"><strong>S</strong></div>
+
+            <i class="state-snapshot state-snapshot-forward" data-step="1" style="--x: 10.57%" aria-hidden="true">S<sup>→</sup></i>
+            <i class="state-snapshot state-snapshot-forward" data-step="2" style="--x: 17.14%" aria-hidden="true">S<sup>→</sup></i>
+            <i class="state-snapshot state-snapshot-forward" data-step="3" style="--x: 23.71%" aria-hidden="true">S<sup>→</sup></i>
+            <i class="state-snapshot state-snapshot-forward" data-step="4" style="--x: 30.29%" aria-hidden="true">S<sup>→</sup></i>
+            <i class="state-snapshot state-snapshot-forward" data-step="5" style="--x: 36.86%" aria-hidden="true">S<sup>→</sup></i>
+            <i class="state-snapshot state-snapshot-reverse" data-step="13" style="--x: 89.43%" aria-hidden="true">S<sup>←</sup></i>
+            <i class="state-snapshot state-snapshot-reverse" data-step="12" style="--x: 82.86%" aria-hidden="true">S<sup>←</sup></i>
+            <i class="state-snapshot state-snapshot-reverse" data-step="11" style="--x: 76.29%" aria-hidden="true">S<sup>←</sup></i>
+            <i class="state-snapshot state-snapshot-reverse" data-step="10" style="--x: 69.71%" aria-hidden="true">S<sup>←</sup></i>
+            <i class="state-snapshot state-snapshot-reverse" data-step="9" style="--x: 63.14%" aria-hidden="true">S<sup>←</sup></i>
+
+            <div class="state-merge-result" aria-hidden="true">
+              <span>Softmax + Linear Attention</span>
+              <strong>hybrid readout</strong>
+            </div>
+          </div>
+
+        </figure>
+
+        <p>Both attention branches are <strong>conditioned on the text prompt</strong>. In the softmax branch, text tokens remain globally visible to every frame. In the linear branch, the text prompt is incorporated once at initialization: we write the text tokens into both the forward and reverse states via the delta rule, each scaled by one half, so that summing the two readouts counts the text contribution exactly once.</p>
+
+        <div class="equation-card text-state-card">
+          <span class="eq-label">Prompt-conditioned bidirectional initialization</span>
+          <div class="equation">
+            \[
+            \begin{aligned}
+            S_0^{\rightarrow}=S_0^{\leftarrow}&=\tfrac12 S_{\mathrm{text}},\\
+            \big(S_0^{\rightarrow}+S_0^{\leftarrow}\big)q
+            &=S_{\mathrm{text}}q.
+            \end{aligned}
+            \]
+          </div>
+        </div>
+
+        <p>To make the attention pattern concrete, we visualize the attention map for a representative workload with 1 text token, 16 video frames, and 1 audio token. For legibility, the VAE groups every 2 consecutive frames into a chunk here, rather than 5 as in the full model. Softmax attention handles the text and audio tokens, the local frame pairs within the sliding window, and the boundary anchors. Linear attention handles the remaining long-range context along with the text prompt written into its states at initialization as described above.</p>
+
+        <figure class="viz-card workload-figure" id="workload-figure" aria-label="Representative workload attention allocation">
+          <div class="attention-layout workload-attention-layout">
+            <div class="attention-map-wrap">
+              <div class="axis-label axis-y">Query frame</div>
+              <div class="attention-map workload-attention-map" id="workload-attention-map" role="img" aria-label="An attention-allocation map ordered as Text, 16 video cells, and Audio on both axes. Green Text occupies the top row and left column, purple Audio occupies the bottom row and right column, and the central video region is grouped into eight two-cell VAE temporal units. Softmax covers Text and Audio. Linear uses the left Text-key cell exactly on rows containing distant video interactions."></div>
+              <div class="axis-label axis-x">Key frame</div>
+              <div class="viz-tooltip" id="workload-attention-tooltip" role="status" aria-live="polite"></div>
+            </div>
+            <div class="attention-copy">
+              <div class="legend-stack workload-category-legend" aria-label="Legend">
+                <button class="legend-item" type="button" data-workload-filter="softmax" aria-pressed="false">
+                  <span class="legend-swatch softmax"></span><span><strong>Softmax path</strong></span>
+                </button>
+                <button class="legend-item" type="button" data-workload-filter="linear" aria-pressed="false">
+                  <span class="legend-swatch linear"></span><span><strong>Linear path</strong></span>
+                </button>
+                <button class="legend-item" type="button" data-workload-filter="anchor" aria-pressed="false">
+                  <span class="legend-swatch anchor"></span><span><strong>Boundary anchors</strong></span>
+                </button>
+                <button class="legend-item" type="button" data-workload-filter="text" aria-pressed="false">
+                  <span class="legend-swatch text-context"></span><span><strong>Text context</strong></span>
+                </button>
+                <button class="legend-item" type="button" data-workload-filter="audio" aria-pressed="false">
+                  <span class="legend-swatch audio-context"></span><span><strong>Audio context</strong></span>
+                </button>
+              </div>
+              <label class="range-control" for="workload-radius-control">
+                <span class="range-control-head">
+                  <span>VAE Range · <output id="workload-radius-output">1 chunk</output></span>
+                  <output id="workload-attention-summary">52% Softmax / 48% Linear</output>
+                </span>
+                <input id="workload-radius-control" type="range" min="0" max="3" value="1" step="1">
+              </label>
+            </div>
+          </div>
+        </figure>
+
+        <h3 id="gated-fusion">Gating the Softmax and Linear Branch Outputs</h3>
+
+        <p>The outputs of the two branches cannot simply be summed as their scales differ. Instead, we apply a <strong>content-dependent sigmoid gate</strong> to each branch, project each through its own output projection, and add both results into the residual stream.</p>
+
+        <p>The two gates serve different purposes. In the softmax branch, the normalizer sums over only the local window, so the branch redistributes full attention mass across nearby frames even though most key positions have been removed. This potentially leads to an over-weighting of the local context. The softmax gate learns to calibrate this, controlling how much of the local output to preserve.</p>
+
+        <p>For the linear branch, the output scale may not naturally match the softmax branch. Following Gated DeltaNet and Kimi Delta Attention,<sup><a href="#ref-gdn">[4]</a><a href="#ref-kda">[5]</a></sup> we apply RMSNorm followed by an element-wise sigmoid gate to its output. The linear branch also receives its own output projection since the two branches may require different output spaces. We illustrate the full mechanism below.</p>
+
+        <figure class="viz-card branch-figure" id="branch-figure" aria-label="Gated Softmax and Linear Attention branch outputs">
+          <div class="branch-stage branch-stage-simple" data-focus="all">
+            <div class="branch-canvas">
+              <svg class="branch-svg branch-svg-simple" viewBox="0 -28 920 420" role="img" aria-label="The input splits into Softmax Attention and Linear Attention. The Linear readout is RMS-normalized, then each branch is controlled by its own sigmoid gate, passed through its own output projection, and added.">
+                <defs>
+                  <clipPath id="branch-inner-clip">
+                    <rect x="20" y="24" width="880" height="350" rx="34"></rect>
+                  </clipPath>
+                </defs>
+                <rect class="simple-shell" x="20" y="24" width="880" height="350" rx="34"></rect>
+
+                <g class="branch-part fuse-part" data-branch-part="fuse">
+                  <path class="final-output-arrow" d="M460 41 V-16 M449 -3 L460 -16 L471 -3"></path>
+                  <g class="branch-block" data-branch-block="sum" tabindex="0" aria-label="Gated sum">
+                    <circle class="simple-operator sum-operator" cx="460" cy="58" r="17"></circle>
+                    <path class="operator-stroke sum-stroke" d="M449.8 58 H470.2 M460 47.8 V68.2"></path>
+                  </g>
+                </g>
+
+                <g class="branch-part soft-part" data-branch-part="softmax" clip-path="url(#branch-inner-clip)">
+                  <g class="branch-block" data-branch-block="softmax-attention" tabindex="0" aria-label="Sliding-window Softmax Attention">
+                    <rect class="simple-node attention-node soft-node" x="185" y="228" width="220" height="58" rx="17"></rect>
+                    <text class="simple-title compact-attention-title" x="295" y="263" text-anchor="middle">Softmax Attention</text>
+                  </g>
+
+                  <path class="simple-path soft-path" d="M295 228 V181"></path>
+
+                  <g class="branch-block" data-branch-block="softmax-multiply" tabindex="0" aria-label="Softmax output multiplication">
+                    <circle class="simple-operator gate-operator soft-gate" cx="295" cy="164" r="17"></circle>
+                    <path class="operator-stroke multiply-stroke" d="M287.8 156.8 L302.2 171.2 M302.2 156.8 L287.8 171.2"></path>
+                  </g>
+
+                  <g class="gate-shape soft-gate-shape">
+                    <g class="branch-block" data-branch-block="softmax-projection" tabindex="0" aria-label="Softmax gate projection">
+                      <rect class="block-hit-area" x="35" y="228" width="120" height="58" rx="6"></rect>
+                      <polygon class="gate-half" points="35,228 155,228 132,252 58,252"></polygon>
+                      <polygon class="gate-half" points="58,260 132,260 155,286 35,286"></polygon>
+                    </g>
+                    <g class="branch-block" data-branch-block="softmax-sigmoid" tabindex="0" aria-label="Softmax sigmoid gate">
+                      <circle class="sigmoid-node" cx="95" cy="196" r="14"></circle>
+                      <text class="sigmoid-label" x="95" y="202" text-anchor="middle">σ</text>
+                    </g>
+                  </g>
+                  <path class="simple-path gate-path soft-path" d="M95 228 V210 M95 182 V174 Q95 164 105 164 H278"></path>
+
+                  <path class="simple-path soft-path" d="M295 147 V132"></path>
+                  <g class="branch-block" data-branch-block="softmax-output-projection" tabindex="0" aria-label="Softmax output projection">
+                    <rect class="simple-node output-projection-node soft-node" x="227" y="90" width="136" height="42" rx="11"></rect>
+                    <text class="simple-output-title" x="295" y="112" text-anchor="middle" dominant-baseline="middle">Output Proj</text>
+                  </g>
+
+                  <path class="simple-path soft-path merge-path" d="M295 90 V68 Q295 58 305 58 H443"></path>
+                </g>
+
+                <g class="branch-part linear-part" data-branch-part="linear" clip-path="url(#branch-inner-clip)">
+                  <g class="branch-block" data-branch-block="linear-attention" tabindex="0" aria-label="Bidirectional Linear Attention">
+                    <rect class="simple-node attention-node linear-node" x="515" y="228" width="220" height="58" rx="17"></rect>
+                    <text class="simple-title compact-attention-title" x="625" y="263" text-anchor="middle">Linear Attention</text>
+                  </g>
+
+                  <path class="simple-path linear-path" d="M625 228 V181"></path>
+
+                  <g class="branch-block" data-branch-block="linear-multiply" tabindex="0" aria-label="Linear output multiplication">
+                    <circle class="simple-operator gate-operator linear-gate" cx="625" cy="164" r="17"></circle>
+                    <path class="operator-stroke multiply-stroke" d="M617.8 156.8 L632.2 171.2 M632.2 156.8 L617.8 171.2"></path>
+                  </g>
+
+                  <g class="gate-shape linear-gate-shape">
+                    <g class="branch-block" data-branch-block="linear-projection" tabindex="0" aria-label="Linear gate projection">
+                      <rect class="block-hit-area" x="765" y="228" width="120" height="58" rx="6"></rect>
+                      <polygon class="gate-half" points="765,228 885,228 862,252 788,252"></polygon>
+                      <polygon class="gate-half" points="788,260 862,260 885,286 765,286"></polygon>
+                    </g>
+                    <g class="branch-block" data-branch-block="linear-sigmoid" tabindex="0" aria-label="Linear sigmoid gate">
+                      <circle class="sigmoid-node" cx="825" cy="196" r="14"></circle>
+                      <text class="sigmoid-label" x="825" y="202" text-anchor="middle">σ</text>
+                    </g>
+                  </g>
+                  <path class="simple-path gate-path linear-path" d="M825 228 V210 M825 182 V174 Q825 164 815 164 H642"></path>
+
+                  <path class="simple-path linear-path" d="M625 147 V132"></path>
+                  <g class="branch-block" data-branch-block="linear-output-projection" tabindex="0" aria-label="Linear Attention output projection">
+                    <rect class="simple-node output-projection-node linear-node" x="557" y="90" width="136" height="42" rx="11"></rect>
+                    <text class="simple-output-title" x="625" y="112" text-anchor="middle" dominant-baseline="middle">Output Proj</text>
+                  </g>
+
+                  <path class="simple-path linear-path merge-path" d="M625 90 V68 Q625 58 615 58 H477"></path>
+                </g>
+
+                <g class="branch-part shared-part" data-branch-part="shared">
+                  <g clip-path="url(#branch-inner-clip)">
+                    <path class="simple-path soft-path split-path" d="M460 320 H305 Q295 320 295 310 V286"></path>
+                    <path class="simple-path linear-path split-path" d="M460 320 H615 Q625 320 625 310 V286"></path>
+
+                    <path class="simple-path gate-input soft-path" d="M460 320 H105 Q95 320 95 310 V286"></path>
+                    <path class="simple-path gate-input linear-path" d="M460 320 H815 Q825 320 825 310 V286"></path>
+                    <path class="simple-path neutral-path input-path" d="M460 374 V320"></path>
+                  </g>
+                  <g class="branch-block input-block" data-branch-block="shared-input" tabindex="0" aria-label="Shared hidden-state input">
+                    <circle class="block-hit-area" cx="460" cy="320" r="18"></circle>
+                    <circle class="input-junction" cx="460" cy="320" r="4"></circle>
+                  </g>
+                  <path class="simple-path neutral-path input-tail" d="M460 386 V374"></path>
+                </g>
+              </svg>
+              <div class="branch-tooltip" role="status" aria-live="polite"></div>
+            </div>
+
+            <div class="branch-captions branch-captions-simple">
+              <button type="button" data-branch-focus="softmax"><span>01</span><strong>Softmax path</strong> keeps exact local interaction, applies its gate, then passes through W<sub>O</sub><sup>sw</sup>.</button>
+              <button type="button" data-branch-focus="linear"><span>02</span><strong>Linear path</strong> adds the directional state reads, applies RMSNorm and its gate, then passes through W<sub>O</sub><sup>far</sup>.</button>
+              <button type="button" data-branch-focus="fuse"><span>03</span><strong>Gated addition</strong> combines the two controlled outputs at the central plus node.</button>
+            </div>
+          </div>
+        </figure>
+
+      </section>
+
+      <section id="vda">
+        <h2>Video Delta Attention: A Frame-Wise Solution</h2>
+
+        <p id="vda-intro">With the overall hybrid architecture in place, we can now look more closely at how to design our linear attention method: Video Delta Attention. The major bottleneck is how to turn the <strong>token-wise delta rule into a frame-wise delta-rule</strong>, making the linear attention video-native. Before explaining our method, we first review the standard linear attention update that is widely used in LLMs.</p>
+
+          <p>Let \(S_{t-1}\) be the linear state entering the current step. KDA<sup><a href="#ref-kda">[5]</a></sup> first applies the channel-wise decay gate \(\alpha\) to form the decayed state \(\bar S=S_{t-1}\operatorname{Diag}(\alpha)\). The classical delta rule then processes one token at a time: it reads the value associated with key \(k\), compares it with target \(v\), and writes the residual along the same direction. The write strength \(\beta\), acting as the update's adaptive learning rate, controls how strongly the old association is erased and the new target written.</p>
+
+        <div class="equation-card">
+          <span class="eq-label">Classical Delta Rule · one token</span>
+          <div class="equation">\[
+            \bar S=S_{t-1}\operatorname{Diag}(\alpha),
+            \qquad
+            S_t=\bar S+\beta\big(v-\bar S k\big)k^\top.
+          \]</div>
+          <p>The decay gate first produces \(\bar S\); the scalar \(\beta\) then scales the erase-then-write correction. KDA uses channel-wise \(\alpha\) gates so different feature directions decay at different rates.</p>
+        </div>
+
+        <p>For video, however, a strictly token-by-token update is not the most natural unit of computation. Video generation is organized around latent frames, so the <strong>spatial tokens within one frame should update the linear state together</strong>. SANA-WM therefore parallelizes the delta rule across all \(U\) spatial tokens in one frame.<sup><a href="#ref-sana-wm">[11]</a></sup> Let \(K\) collect the unit-normalized keys before frame-size scaling. SANA-WM applies that additional scaling to the keys themselves to address stability issues, using \(\widehat K=K/\sqrt U\), whose \(u\)-th row is \(\hat k_u^\top=k_u^\top/\sqrt U\). To keep the unscaled frame statistics available for comparison, define</p>
+
+        <div class="equation-grid">
+          <div class="equation-mini"><span>weighted key Gram matrix</span>\[A=K^\top\diag(\beta)K\]</div>
+          <div class="equation-mini"><span>weighted value–key write matrix</span>\[B=V^\top\diag(\beta)K\]</div>
+          <div class="equation-mini"><span>decayed state</span>\[\bar S=S_{t-1}\diag(\alpha)\]</div>
+        </div>
+
+        <div class="equation-card" id="sana-batch-step">
+          <span class="eq-label">SANA-WM · one parallel batch step</span>
+          <div class="equation">\[
+            \begin{aligned}
+            \widehat K&=\frac{K}{\sqrt U},
+            \qquad
+            \hat k_u=\frac{k_u}{\sqrt U},\\
+            S_{\mathrm{SANA}}
+            &=\bar S+\sum_{u=1}^{U}\beta_u
+              \bigl(v_u-\bar S\hat k_u\bigr)\hat k_u^\top\\
+            &=\bar S\left(I-\frac{A}{U}\right)+\frac{B}{\sqrt U}.
+            \end{aligned}
+          \]</div>
+          <p>The key matrix \(\widehat K\), not the values \(V\), receives SANA-WM’s frame-size scaling. The erase statistic contains two key factors, so \(\widehat K^\top\operatorname{Diag}(\beta)\widehat K=A/U\); the value–key write contains one, so \(V^\top\operatorname{Diag}(\beta)\widehat K=B/\sqrt U\). <a href="#spectrum-proof">The stability section explains why this normalization is needed.</a></p>
+        </div>
+
+        <h3>From independent token updates to one frame-wise solve</h3>
+
+        <p>In the SANA-WM update above, every token reads from the same frozen state \(\bar S\), and each write is computed without seeing the other proposed writes. Consequently, one token cannot adjust its correction when another has a similar key but a different target. Although the batched update is applied once per frame, its tokens <strong>do not interact or negotiate</strong>; correlated and repeated evidence simply accumulates.</p>
+
+        <p>Our motivation is to make both reading and writing genuinely frame-wise. All tokens in the frame should determine one new state together, so correlated patches can resolve their shared directions inside the update itself. At the same time, the new state should remain close to the memory already accumulated from earlier frames.</p>
+
+        <p>The Delta Rule already suggests how to do this. Its one-token correction is exactly a gradient-descent step with learning rate \(\beta\) on the prediction error:</p>
+
+        <div class="equation-card">
+          <span class="eq-label">The Delta Rule as gradient descent</span>
+          <div class="equation">\[
+            \ell(S;k,v)=\frac12\|Sk-v\|_2^2,
+            \qquad
+            \bar S-\beta\nabla_S\ell(\bar S;k,v)
+            =\bar S+\beta(v-\bar S k)k^\top.
+          \]</div>
+          <p>Instead of taking one independent descent step for every token, we solve the frame-level fitting problem directly.</p>
+        </div>
+
+        <p>We turn the desired reads \(Sk_u\approx v_u\) into <strong>one joint objective</strong> and add a proximity term that prevents the new state from moving too far from \(\bar S\):</p>
+
+        <div class="equation-card joint-objective-card">
+          <span class="eq-label">Frame-wise regularized objective</span>
+          <div class="equation">\[
+            \min_S\quad
+            \frac12\|S-\bar S\|_F^2
+            +\frac12\sum_{u=1}^{U}\beta_u\|Sk_u-v_u\|_2^2.
+          \]</div>
+          <p>The first term preserves existing memory. The second requires one shared state to fit all tokens in the new frame simultaneously.</p>
+        </div>
+
+        <p>Using the same \(A=K^\top\operatorname{Diag}(\beta)K\) and \(B=V^\top\operatorname{Diag}(\beta)K\) as above, differentiating with respect to \(S\) gives</p>
+
+        <div class="equation-card joint-derivation-card">
+          <span class="eq-label">Normal equation and joint solution</span>
+          <div class="equation">\[
+            \begin{aligned}
+            0
+            &= (S-\bar S)+\sum_{u=1}^{U}\beta_u(Sk_u-v_u)k_u^\top \\
+            &= S-\bar S+SA-B,\\[3pt]
+            S(I+A) &= \bar S+B,\\[3pt]
+            S_t &= (\bar S+B)(I+A)^{-1}.
+            \end{aligned}
+          \]</div>
+          <p>The statistics are unchanged; the difference is that VDA solves their <strong>joint normal equation</strong> instead of applying one frozen-state batch gradient step.</p>
+        </div>
+
+        <p>This formulation has two useful consequences, which we explain below.</p>
+
+        <ol class="vda-properties">
+          <li><span class="property-index">01</span><div><strong>Stability of the Inherited State</strong><p>For \(A\succeq0\), the transition \((I+A)^{-1}\) has operator norm at most one, so a single frame update cannot amplify the inherited-state component. <a href="#spectrum">See the stability derivation below.</a></p></div></li>
+          <li><span class="property-index">02</span><div><strong>Correlation-Aware Frame Updates</strong><p>The joint solve preconditions the batch residual with \((I+A)^{-1}\), formed from the weighted key Gram matrix \(A\), damping redundant directions without globally shrinking independent ones. <a href="#negotiation">See how repeated and independent key directions produce different frame updates below.</a></p></div></li>
+        </ol>
+      </section>
+
+      <section id="spectrum">
+        <h3>Stability of the Inherited State</h3>
+
+        <p>During generation, frame-wise transitions compose over time. If one update amplifies a stored direction, later frames with similar keys can amplify it repeatedly and corrupt the accumulated context. We therefore require the transition acting on the inherited state to be <strong>non-expansive, with operator norm at most one</strong>.</p>
+
+        <p>The three rules differ only in which transition they apply, so we check this single requirement three times. Each check explains one scaling decision encountered above: why GDN and KDA unit-scale their keys,<sup><a href="#ref-gdn">[4]</a><a href="#ref-kda">[5]</a></sup> why SANA-WM must add a frame-size factor on top of that, and why VDA needs <strong>no size-dependent scaling</strong> at all.</p>
+
+        <h4>Why GDN and KDA unit-scale their keys</h4>
+
+        <p>Start with one token. The value write \(\beta_u v_u k_u^\top\) is purely additive, so the inherited state is touched only by the rank-one erase \(M_u\), and the question is simply whether \(\lVert M_u\rVert_2\le1\). Applying the erase to the key itself reveals its only nontrivial eigendirection:</p>
+
+        <div class="equation-card native-transition-card">
+          <span class="eq-label">One-token erase · stability condition</span>
+          <div class="equation">\[
+            \begin{aligned}
+            M_u&=I-\beta_u k_u k_u^\top,\\
+            M_u k_u
+            &=\left(I-\beta_u k_u k_u^\top\right)k_u
+              =\left(1-\beta_u\lVert k_u\rVert_2^2\right)k_u,\\[3pt]
+            \mu_u&\triangleq1-\beta_u\lVert k_u\rVert_2^2,
+            \qquad M_u k_u=\mu_u k_u,\\[3pt]
+            \lVert M_u\rVert_2\le1
+            &\iff |\mu_u|\le1.
+            \end{aligned}
+          \]</div>
+        </div>
+
+        <p>This reveals that \(k_u\) is an eigenvector of \(M_u\), with eigenvalue \(\mu_u\triangleq1-\beta_u\lVert k_u\rVert_2^2\). For any vector \(z\) orthogonal to \(k_u\), we have \(M_u z=z\), so every orthogonal direction has eigenvalue one. Consequently, \(\lVert M_u\rVert_2=\max\{1,|\mu_u|\}\), and the update is non-expansive exactly when \(|\mu_u|\le1\). Since \(0\le\beta_u\le1\), unit scaling \(\lVert k_u\rVert_2=1\) ensures \(\mu_u=1-\beta_u\in[0,1]\). Therefore \(\lVert M_u\rVert_2=1\), and the inherited state cannot expand. Without normalization, the key norm can instead make \(|\mu_u|>1\), violating this guarantee.</p>
+
+        <h4 id="spectrum-proof">Why SANA-WM must also scale by frame size</h4>
+
+        <p>In one video frame, SANA-WM processes \(U\) spatial tokens in parallel. Each token contributes a rank-one erase, and their sum is the weighted key Gram matrix \(A\). Setting aside SANA-WM’s frame-size scaling for a moment, the inherited state therefore passes through \(I-A\). To determine whether this transition is non-expansive, we first examine the spectrum of \(A\):</p>
+
+        <div class="equation-card spectral-definition">
+          <span class="eq-label">Weighted key Gram matrix · why \(A\succeq0\)</span>
+          <div class="equation">\[
+            \begin{aligned}
+            A
+            &=K^\top\operatorname{Diag}(\beta)K
+              =\sum_{u=1}^{U}\beta_u k_u k_u^\top,\\
+            x^\top A x
+            &=\sum_{u=1}^{U}\beta_u(k_u^\top x)^2\ge0
+              \quad\text{for every }x,\\[2pt]
+            A
+            &=Q\Lambda Q^\top,
+              \qquad \Lambda=\operatorname{Diag}(\lambda_1,\ldots,\lambda_d),
+              \qquad \lambda_i\ge0.
+            \end{aligned}
+          \]</div>
+        </div>
+
+        <p>Since \(\beta_u\ge0\), the middle line shows that \(A\succeq0\). By the spectral theorem, \(A=Q\Lambda Q^\top\) has orthonormal eigenvectors and nonnegative eigenvalues \(\lambda_i(A)\); therefore \(I-A\) scales each eigenvector by \(1-\lambda_i(A)\). Unit scaling bounds each token’s contribution, but not these frame-wide eigenvalues. When many keys align, their contributions accumulate in one eigendirection and make the corresponding \(\lambda_i(A)\) large:</p>
+
+        <div class="equation-card cumulative-transition-card">
+          <span class="eq-label">Without frame-size scaling · additive transition</span>
+          <div class="equation">\[
+            \begin{aligned}
+            M_{\Sigma}&=I-A,
+            & A&=\sum_{u=1}^{U}\beta_u k_u k_u^\top,\\
+            \lambda_i(M_{\Sigma})&=1-\lambda_i(A),
+            & \lambda_{\max}(A)&\le\operatorname{tr}(A)=\sum_{u=1}^{U}\beta_u.
+            \end{aligned}
+          \]</div>
+        </div>
+
+        <p>For unit keys, \(\lambda_{\max}(A)\le\operatorname{tr}(A)=\sum_u\beta_u\), so the largest eigenvalue can grow with the number of spatial tokens. If aligned keys make \(\lambda_i(A)>2\), then \(|1-\lambda_i(A)|>1\), and \(I-A\) becomes expansive. <strong>Unit-scaling each key is therefore insufficient</strong> for a frame-wide batch update.</p>
+
+        <p>SANA-WM prevents this by scaling each unit key by \(1/\sqrt U\): \(\hat k_u=k_u/\sqrt U\). This changes \(A\) to \(A/U\), and since \(\lambda_{\max}(A)\le\sum_u\beta_u\le U\), we have \(\lambda_{\max}(A/U)\le1\). Therefore \(I-A/U\) has eigenvalues in \([0,1]\) and is non-expansive.</p>
+
+        <h4>Why VDA needs no frame-size scaling</h4>
+
+        <p>VDA never forms the additive transition, so it never needs the worst-case rescale. Its joint frame-wise solve yields \((I+A)^{-1}\) directly from the unscaled weighted key Gram matrix, and because \(I+A\) has the same eigenvectors as \(A\), the new transition can be read in exactly the same eigenbasis:</p>
+
+        <div class="equation-card vda-transition-card">
+          <span class="eq-label">VDA inherited-state transition</span>
+          <div class="equation">\[
+            \begin{aligned}
+            M_{\mathrm{VDA}}
+            &=(I+A)^{-1}=Q(I+\Lambda)^{-1}Q^\top,\\
+            M_{\mathrm{VDA}}q_i
+            &=\frac{1}{1+\lambda_i}q_i,
+            \qquad
+            \lVert M_{\mathrm{VDA}}\rVert_2
+            =\max_i\frac{1}{1+\lambda_i}\le1.
+            \end{aligned}
+          \]</div>
+        </div>
+
+        <p>For every \(\lambda_i\ge0\), the multiplier \(1/(1+\lambda_i)\) lies in \((0,1]\): a direction with little frame evidence is nearly preserved, and a heavily crowded one is strongly suppressed. Where the additive multiplier \(1-\lambda_i\) keeps falling and crosses \(-1\) as crowding grows, \(1/(1+\lambda_i)\) only flattens toward zero and never crosses it. VDA is therefore <strong>natively non-expansive</strong> for any number or alignment of tokens: the required contraction comes from the observed Gram spectrum rather than a global frame-size scale.</p>
+
+        <p>The decay gate preserves the same property. Since \(\bar S=S_{t-1}\operatorname{Diag}(\alpha_t)\) with \(0\le\alpha_t\le1\), the inherited component is multiplied by \(\operatorname{Diag}(\alpha_t)(I+A_t)^{-1}\), whose operator norm is at most one by submultiplicativity.</p>
+
+      </section>
+
+      <section id="negotiation">
+        <h3>Correlation-Aware Frame Updates</h3>
+
+        <p>VDA’s correlation-aware solve has another benefit: it uses unit-normalized keys directly, without attenuating each value–key write by \(1/\sqrt U\). SANA-WM chooses its frame scale from the token count \(U\) alone, so it cannot distinguish a frame that repeats one memory direction from one that spans \(U\) independent directions. VDA’s \((I+A)^{-1}\) <strong>adapts to the observed correlations</strong> instead:</p>
+
+        <div class="equation-card">
+          <span class="eq-label">Joint solve as a corrected additive update</span>
+          <div class="equation">\[
+            (I+A)^{-1}=I-A+A^2-A^3+\cdots,
+            \qquad \rho(A)<1.
+          \]</div>
+        </div>
+
+        <p>The first-order term \(I-A\) treats the proposed corrections additively. The higher-order powers \(A^2,A^3,\ldots\) account for their interactions through shared key directions. VDA evaluates the inverse directly, so the solve remains well-defined for every \(A\succeq0\), including outside the series’ convergence regime. Two extreme key geometries make this difference concrete.</p>
+
+        <p>Assume unit keys and a shared write strength \(\beta\). In the first geometry every token addresses the same direction, \(k_u=k\), and the targets collapse to their mean \(\bar v=U^{-1}\sum_u v_u\); in the second the keys are orthonormal, with no overlap at all. Because SANA-WM stores associations for its scaled keys \(\hat k_u=k_u/\sqrt U\) while VDA uses \(k_u\), we compare the prediction each state produces on its own key. Substituting each geometry’s \(A\) and \(B\) into the two update rules gives</p>
+
+        <div class="equation-card geometry-comparison-card">
+          <span class="eq-label">Two key geometries · readout comparison</span>
+          <div class="equation">\[
+            \begin{aligned}
+            \text{repeated keys }(k_u=k):\qquad
+            S_{\mathrm{SANA}}\hat k
+            &=(1-\beta)\,\bar S\hat k+\beta\,\bar v,\\
+            S_{\mathrm{VDA}}k
+            &=\frac{1}{1+U\beta}\,\bar S k+\frac{U\beta}{1+U\beta}\,\bar v,\\[6pt]
+            \text{orthonormal keys}:\qquad
+            S_{\mathrm{SANA}}\hat k_j
+            &=\Bigl(1-\frac{\beta}{U}\Bigr)\bar S\hat k_j+\frac{\beta}{U}\,v_j,\\
+            S_{\mathrm{VDA}}k_j
+            &=\frac{1}{1+\beta}\,\bar S k_j+\frac{\beta}{1+\beta}\,v_j.
+            \end{aligned}
+          \]</div>
+          <p>With repeated keys, both methods interpolate toward the consensus target, but SANA-WM’s data weight stays \(\beta\) whether one token or a hundred agree, while VDA’s \(U\beta/(1+U\beta)\) grows with the amount of evidence yet never exceeds one. With orthonormal keys, SANA-WM writes each independent association with only \(\beta/U\)—a penalty imposed by the \(U-1\) unrelated tokens—while VDA gives every direction its full \(\beta/(1+\beta)\).</p>
+        </div>
+
+        <p>These two cases expose the limitation of a single \(U\)-based scale. With repeated keys, SANA-WM ignores how many tokens support the same association; with orthogonal keys, it weakens each independent write by \(1/U\). VDA instead adapts each eigendirection through \((I+A)^{-1}\), preserving repeated evidence without penalizing unrelated directions.</p>
+
+      </section>
+      <section id="training">
+        <h2>Adapting the Pretrained H3 backbone</h2>
+
+        <p>In this section, we explain how to adapt the existing H3 model to our hybrid architecture. Introducing a <strong>randomly initialized linear branch</strong> into the hybrid architecture can easily perturb the already well-calibrated softmax path, since all linear state, gate, and output projection begin with random initialization. Therefore, naively end-to-end training can easily degrade generation quality.</p>
+
+        <p>We therefore propose a <strong>three-stage training pipeline</strong>.</p>
+
+        <div class="training-timeline" aria-label="VDN-H3 adaptation training stages">
+          <div class="timeline-step"><span>A1</span><div><strong>Layer-wise alignment</strong><p>Calibrate each new Linear branch one block at a time.</p></div></div>
+          <div class="timeline-step"><span>A2</span><div><strong>End-to-End branch adaptation</strong><p>Optimize all assembled hybrid blocks through the complete denoiser.</p></div></div>
+          <div class="timeline-step"><span>B</span><div><strong>End-to-End LoRA co-adaptation</strong><p>Co-adapt hybrid attention and QKVO LoRA across the full model.</p></div></div>
+        </div>
+
+        <p>In Stage A1, we calibrate one layer at a time. Following the per-layer calibration strategy introduced by Taylor-Calibrate,<sup><a href="#ref-taylor-calibrate">[14]</a></sup> each randomly initialized linear branch needs to be trained independently before full model training. This offers a better initialization for the next stage. In Stage A2, we perform end-to-end branch adaptation. We insert all hybrid blocks in the backbone and train them jointly. In both Stage A1 and A2, we <strong>freeze the softmax branch, QKVO projection, and FFN</strong> to isolate the effect of the linear branch. In Stage B, we perform end-to-end co-adaptation. We add LoRA adapters to the QKV projection and O projection, then jointly train these adapters and the linear branch. All remaining parameters remain frozen.</p>
+
+        <p>Crucially, the <strong>softmax gate remains frozen throughout Stage A1 and A2</strong>. Before the linear branch is correctly trained, a trainable softmax gate gives the optimizer an easier but undesirable way to reduce the loss. It might over-suppress the softmax branch instead of learning the new linear branch. Therefore, we only train it in Stage B, as we believe the linear branch can provide meaningful signal at that time.</p>
+
+        <figure class="viz-card transplant-figure" aria-label="Hybrid attention calibration stages">
+          <div class="viz-head is-status-only">
+            <span class="viz-hint status-legend">
+              <span><i class="status-icon frozen" aria-hidden="true"></i>frozen</span>
+              <span><i class="status-icon hot" aria-hidden="true"></i>trainable</span>
+            </span>
+          </div>
+
+          <div class="transplant-stage">
+            <section class="model-stack teacher-stack">
+              <div class="transplant-title"><span>STARTING POINT</span><strong>MiniMax H3 backbone</strong></div>
+              <div class="stack-nodes">
+                <div class="stack-node inherited-node">Output head</div>
+                <i>↑</i>
+                <div class="stack-node inherited-node">MLP</div>
+                <i>↑</i>
+                <div class="stack-node inherited-node teacher-attention-node">Full Attention</div>
+                <i>↑</i>
+                <div class="stack-node inherited-node">Embedding</div>
+              </div>
+              <p>Already generates well. Its representation and residual scale provide the pretrained reference.</p>
+            </section>
+
+            <section class="transplant-panel alignment-panel">
+              <div class="transplant-title"><span>A1 PER-LAYER · A2 END-TO-END</span><strong>Hybrid attention layer</strong></div>
+              <div class="alignment-architecture" role="img" aria-label="Shared QKV branches into Sliding-window Softmax and Video Delta Attention. During alignment, Shared QKV, Sliding-window Softmax, the Softmax gate, and the MLP are frozen; Video Delta Attention and the far gate are trainable.">
+                <svg class="alignment-connectors" viewBox="0 0 500 400" aria-hidden="true">
+                  <path class="alignment-line shared-line" d="M250 328 V306 Q250 296 240 296 H135 Q125 296 125 286 V282"></path>
+                  <path class="alignment-line shared-line" d="M250 328 V306 Q250 296 260 296 H365 Q375 296 375 286 V282"></path>
+                  <path class="alignment-line softmax-line" d="M125 212 V160"></path>
+                  <path class="alignment-line vda-line" d="M375 212 V160"></path>
+                  <path class="alignment-line softmax-line merge-line" d="M125 108 V92 Q125 82 135 82 H240 Q250 82 250 72"></path>
+                  <path class="alignment-line vda-line merge-line" d="M375 108 V92 Q375 82 365 82 H260 Q250 82 250 72"></path>
+                </svg>
+
+                <div class="alignment-node alignment-mlp frozen-node">MLP</div>
+                <div class="alignment-node alignment-softmax-gate frozen-node">Softmax gate</div>
+                <div class="alignment-node alignment-far-gate hot-node">Far gate</div>
+                <div class="alignment-node alignment-softmax frozen-node"><span>Sliding-window</span><span>Softmax</span></div>
+                <div class="alignment-node alignment-vda hot-node"><span>Video Delta</span><span>Attention</span></div>
+                <div class="alignment-node alignment-qkv frozen-node">Shared QKV</div>
+              </div>
+              <p>A1 calibrates each attention block independently. A2 installs every calibrated branch and optimizes the assembled hybrid network end to end.</p>
+            </section>
+
+            <section class="model-stack student-stack">
+              <div class="transplant-title"><span>STAGE B · END-TO-END CO-ADAPTATION</span><strong>VDN-H3</strong></div>
+              <div class="stack-nodes">
+                <div class="stack-node stage-b-frozen">Output head</div>
+                <i>↑</i>
+                <div class="stack-node stage-b-frozen">MLP</div>
+                <i>↑</i>
+                <div class="stack-node mixed-node stage-b-trainable">Hybrid attention<br>+ QKVO LoRA</div>
+                <i>↑</i>
+                <div class="stack-node stage-b-frozen">Embedding</div>
+              </div>
+              <p>The hybrid branch and QKVO LoRA co-adapt while the remaining pretrained backbone stays frozen.</p>
+            </section>
+          </div>
+
+        </figure>
+
+        <p>During training, we use <strong>separate learning rate groups</strong> for different parameter families. Following Chimera’s principle,<sup><a href="#ref-chimera">[15]</a></sup> we use a higher learning rate for those linear attention parameters that have a smaller fan-in size, and use a lower learning rate for others. LoRA adapters also has a higher learning rate compared to standard fine-tuning recipes.</p>
+      </section>
+
+      <!-- Benchmark sources: S3 H200 latency breakdown · 2026-08-25; S3 B200 latency breakdown · 2026-08-30 -->
+      <section id="latency">
+        <div class="latency-section-head">
+          <div class="latency-section-heading">
+            <h2>Where the Speedup Comes From</h2>
+            <h3 id="hybrid-attention-architecture">Hybrid Attention Architecture</h3>
+          </div>
+          <div class="hardware-selector" aria-label="Benchmark hardware">
+            <div class="hardware-toggle" data-hardware-switch role="group" aria-label="Choose benchmark hardware">
+              <span class="hardware-toggle-thumb" aria-hidden="true"></span>
+              <button type="button" data-hardware-option="h200" aria-pressed="false">H200</button>
+              <button class="is-active" type="button" data-hardware-option="b200" aria-pressed="true">B200</button>
+            </div>
+          </div>
+        </div>
+
+        <p>Having built the training pipeline to convert the base H3 model into a hybrid architecture, we next measure how this translates into <strong>practical inference speedup</strong>.</p>
+
+        <p data-hardware-copy="overview">On a single B200, the 50-step Dense Attention DiT takes about 13.95 minutes to generate a 15 second, 768p video. VDN-H3 reduces this to about <strong>5.35 minutes</strong> with optimized kernels and FP8 linear layers.</p>
+
+        <p data-hardware-copy="block">To see where the gain comes from, we first isolate a single H3 block. Dense H3 takes 332.5ms on a single B200. By applying Video Delta Attention and Sliding Window Softmax, this number is reduced to 192.1ms. With optimized inference kernels and FP8 linear attention, we achieve 125.3ms inference speed per layer, corresponding to <strong>2.65x speedup</strong>.</p>
+
+        <figure class="viz-card latency-figure" id="latency-figure" aria-labelledby="latency-title">
+          <div class="viz-head">
+            <div>
+              <span class="viz-kicker">Figure 04</span>
+              <h3 class="viz-title" id="latency-title">Speedup and Latency Breakdown</h3>
+            </div>
+          </div>
+
+          <div class="latency-stage">
+            <div class="latency-context" aria-label="Approximate end-to-end denoising time">
+              <div class="latency-stat"><strong data-benchmark="denseVideo">13.95 min</strong><span data-benchmark="denseVideoLabel">Dense · 50 steps · 1 B200</span></div>
+              <div class="latency-stat is-result"><strong data-benchmark="optimizedVideo">5.34 min</strong><span data-benchmark="optimizedVideoLabel">VDN-H3 · 50 steps · 1 B200</span></div>
+            </div>
+
+            <div class="latency-ladder" aria-label="Latency progression from block optimization to end-to-end acceleration">
+              <div class="latency-row">
+                <div class="latency-row-head"><strong>Dense H3</strong><span data-benchmark="denseRowLabel">production cuDNN Attention</span><b class="latency-pair"><span data-benchmark="denseBlock">332.5 ms</span><i>/</i><span data-benchmark="denseVideo">13.95 min</span></b></div>
+                <div class="latency-track">
+                  <div class="latency-components">
+                    <button class="latency-component is-attention" type="button" style="--component-width: 84.75%" data-latency-profile="dense" data-latency-category="attention" aria-label="Show the internal breakdown of Dense H3 attention"><span>Attention</span></button>
+                    <button class="latency-component is-ffn" type="button" style="--component-width: 12.15%" data-latency-profile="dense" data-latency-category="ffn" aria-label="Show the internal breakdown of the Dense H3 feed-forward network"><span>FFN</span></button>
+                    <button class="latency-component is-other" type="button" style="--component-width: 3.10%" data-latency-profile="dense" data-latency-category="others" aria-label="Show the internal breakdown of other Dense H3 block work"><span>Others</span></button>
+                  </div>
+                </div>
+              </div>
+              <div class="latency-row">
+                <div class="latency-row-head"><strong>Hybrid attention</strong><span>tuned local Softmax + distant VDA paths</span><b class="latency-pair"><span data-benchmark="hybridBlock">192.1 ms</span><i>/</i><span data-benchmark="hybridVideo">8.21 min</span></b></div>
+                <div class="latency-track">
+                  <div class="latency-components">
+                    <button class="latency-component is-attention" type="button" style="--component-width: 42.14%" data-latency-profile="hybrid" data-latency-category="attention" aria-label="Show the internal breakdown of hybrid attention"><span>Attention</span></button>
+                    <button class="latency-component is-ffn" type="button" style="--component-width: 12.12%" data-latency-profile="hybrid" data-latency-category="ffn" aria-label="Show the internal breakdown of the hybrid feed-forward network"><span>FFN</span></button>
+                    <button class="latency-component is-other" type="button" style="--component-width: 3.52%" data-latency-profile="hybrid" data-latency-category="others" aria-label="Show the internal breakdown of other hybrid block work"><span>Others</span></button>
+                  </div>
+                </div>
+              </div>
+              <div class="latency-row is-optimized">
+                <div class="latency-row-head"><strong>VDN-H3, optimized</strong><span>dedicated kernels + caching + FP8 Linears</span><b class="latency-pair"><span data-benchmark="optimizedBlock">125.3 ms</span><i>/</i><span data-benchmark="optimizedVideo">5.34 min</span></b></div>
+                <div class="latency-track">
+                  <div class="latency-components">
+                    <button class="latency-component is-attention" type="button" style="--component-width: 31.28%" data-latency-profile="optimized" data-latency-category="attention" aria-label="Show the internal breakdown of optimized VDN-H3 attention"><span>Attention</span></button>
+                    <button class="latency-component is-ffn" type="button" style="--component-width: 5.83%" data-latency-profile="optimized" data-latency-category="ffn" aria-label="Show the internal breakdown of the optimized VDN-H3 feed-forward network"><span>FFN</span></button>
+                    <button class="latency-component is-other" type="button" style="--component-width: .57%" data-latency-profile="optimized" data-latency-category="others" aria-label="Show the internal breakdown of other optimized VDN-H3 block work"><span>Others</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="latency-component-key" aria-hidden="true">
+              <span class="is-attention">Attention</span>
+              <span class="is-ffn">FFN</span>
+              <span class="is-other">Others</span>
+            </div>
+
+            <div class="latency-detail" aria-live="polite">
+              <div class="latency-detail-head">
+                <span data-latency-detail-context>Dense H3 · Attention internals</span>
+                <p data-latency-detail-summary>GitHub L3 kernel measurements, expressed as a share of the attention path.</p>
+              </div>
+              <div class="latency-detail-grid" data-latency-detail-grid></div>
+            </div>
+          </div>
+
+        </figure>
+
+        <h3 id="parallelization">Parallelization &amp; Few-Step Generation</h3>
+
+        <!-- Parallel benchmark source: H3-Diffusers/docs/h3_parallel_optimization.html · 2026-08-27 -->
+        <p data-hardware-copy="ulysses">Our next goal is to use parallelization and few step distillation techniques to further accelerate VDN-H3. Standard Ulysses parallelism shards the sequence across 8 B200s, so each GPU processes only a fraction of the sequence or attention heads. This reduces latency <strong>from 6.46s / NFE to 1.62s / NFE</strong><sup class="note-ref" id="nfe-note-ref"><a href="#nfe-note">†</a></sup>, a 3.99x per-step speedup.</p>
+
+        <aside class="technical-footnote" id="nfe-note" aria-label="NFE definition">
+          <a class="technical-footnote-mark" href="#nfe-note-ref">†</a>
+          <span><strong>NFE</strong> means one neural function evaluation: one DiT denoiser forward pass at a diffusion timestep.</span>
+        </aside>
+
+        <p>However, this is far from optimal. We identify a further speedup opportunity by placing the <strong>softmax branch and VDA branch on separate GPUs</strong>, rather than letting every GPU execute both branches simultaneously.</p>
+
+        <p data-hardware-copy="organization">The tensor remains sharded along the sequence dimension during QKV projection. After that, an uneven all-to-all gathers the heads in a way that <strong>5 GPUs receive the Softmax branch, and 3 GPUs receive the VDA branch</strong>. This split is chosen based on profiling results.</p>
+
+        <p data-hardware-copy="parallelResult">After both branches finish, a reverse all-to-all sends their outputs back to the original sequence-sharded layout. This design reduces inference latency to <strong>1.405 s / NFE</strong>, reducing the latency by 13.3% beyond the standard Ulysses algorithm.</p>
+
+        <p>Few-step distillation provides further gains. Starting from LarryVRH’s community MiniMax-H3 turbo LoRA,<sup><a href="#ref-larry-lora">[16]</a></sup> we continue training it with DMD2<sup><a href="#ref-dmd2">[17]</a></sup> to obtain our own VDN-H3 LoRA for <strong>8-step distillation</strong>. We deliberately avoid an aggressive four-step setting, prioritizing generation quality over latency. An 8-step generation offers better quality-speed trade-off.</p>
+
+        <p data-hardware-copy="overall">Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5x speedup over the dense MiniMax H3 baseline</strong>.</p>
+
+        <figure class="viz-card system-speedup-figure" id="system-speedup-figure" aria-labelledby="system-speedup-title">
+          <div class="viz-head">
+            <div>
+              <span class="viz-kicker">Figure 05</span>
+              <h3 class="viz-title" id="system-speedup-title">Parallel and Few-Step Acceleration</h3>
+            </div>
+          </div>
+
+          <div class="system-speedup-stage" aria-label="End-to-end DiT denoising time after standard Ulysses, branch-specialized parallelism, and eight-step distillation">
+            <div class="system-speedup-row is-ulysses">
+              <div class="system-speedup-head"><strong>Standard Ulysses</strong><span data-benchmark="systemHardware50">50 steps · 8 B200s</span><b data-benchmark="ulyssesTime">1.35 min</b></div>
+              <div class="system-speedup-track"><i style="--system-width: 100%"></i></div>
+            </div>
+            <div class="system-speedup-row is-parallel">
+              <div class="system-speedup-head"><strong>+ Branch-specialized parallelism</strong><span data-benchmark="systemHardware50">50 steps · 8 B200s</span><b data-benchmark="parallelTime">1.17 min</b></div>
+              <div class="system-speedup-track"><i style="--system-width: 86.7%" data-system-width="parallel"></i><em data-benchmark="parallelGain">13.3% lower latency than Ulysses</em></div>
+            </div>
+            <div class="system-speedup-row is-distilled">
+              <div class="system-speedup-head"><strong>+ Eight-step distillation</strong><span data-benchmark="systemHardware8">8 steps · 8 B200s</span><b data-benchmark="fewStepTime">11.23 s</b></div>
+              <div class="system-speedup-track"><i style="--system-width: 14.9%" data-system-width="fewStep"></i><em data-benchmark="overallGain">74.5× vs. dense 50-NFE</em></div>
+            </div>
+          </div>
+        </figure>
+      </section>
+
+      <section id="results">
+        <h2>Results</h2>
+        <p>Below, we show additional qualitative comparisons. VDN-H3 achieves generation quality nearly identical to the dense H3 baseline while running significantly faster.</p>
+        <div class="qualitative-results is-featured" id="qualitative-results-more">
+          <div class="comparison-gallery" data-comparison-gallery data-samples="176,41,104" data-label-prefix="Selected Sample" data-index-start="4" role="list"></div>
+        </div>
+      </section>
+
+      <section id="references">
+        <h2>References</h2>
+        <ol class="references-list">
+          <li id="ref-sparse-videogen"><a href="https://arxiv.org/abs/2502.01776" target="_blank" rel="noreferrer">Sparse VideoGen: Accelerating Video Diffusion Transformers with Spatial-Temporal Sparsity</a>. Xi et al., 2025.</li>
+          <li id="ref-sparse-videogen2"><a href="https://arxiv.org/abs/2505.18875" target="_blank" rel="noreferrer">Sparse VideoGen2: Accelerate Video Generation with Sparse Attention via Semantic-Aware Permutation</a>. Yang et al., 2025.</li>
+          <li id="ref-h3-release"><a href="https://minimaxi.com/blog/minimax-h3" target="_blank" rel="noreferrer">MiniMax H3: Breaking the Boundaries of Tasks and Modalities</a>. MiniMax, 2026.</li>
+          <li id="ref-gdn"><a href="https://arxiv.org/abs/2412.06464" target="_blank" rel="noreferrer">Gated Delta Networks: Improving Mamba2 with Delta Rule</a>. Yang et al., 2024.</li>
+          <li id="ref-kda"><a href="https://arxiv.org/abs/2510.26692" target="_blank" rel="noreferrer">Kimi Linear: An Expressive, Efficient Attention Architecture</a>. Kimi Team, 2025.</li>
+          <li id="ref-sla"><a href="https://arxiv.org/abs/2509.24006" target="_blank" rel="noreferrer">SLA: Beyond Sparsity in Diffusion Transformers via Fine-Tunable Sparse-Linear Attention</a>. Zhang et al., 2025.</li>
+          <li id="ref-sla2"><a href="https://arxiv.org/abs/2602.12675" target="_blank" rel="noreferrer">SLA2: Sparse-Linear Attention with Learnable Routing and QAT</a>. Zhang et al., 2026.</li>
+          <li id="ref-sana"><a href="https://arxiv.org/abs/2410.10629" target="_blank" rel="noreferrer">SANA: Efficient High-Resolution Image Synthesis with Linear Diffusion Transformers</a>. Xie et al., 2024.</li>
+          <li id="ref-sana-15"><a href="https://arxiv.org/abs/2501.18427" target="_blank" rel="noreferrer">SANA 1.5: Efficient Scaling of Training-Time and Inference-Time Compute in Linear Diffusion Transformer</a>. Xie et al., 2025.</li>
+          <li id="ref-sana-video"><a href="https://arxiv.org/abs/2509.24695" target="_blank" rel="noreferrer">SANA-Video: Efficient Video Generation with Block Linear Diffusion Transformer</a>. Chen et al., 2025.</li>
+          <li id="ref-sana-wm"><a href="https://arxiv.org/abs/2605.15178" target="_blank" rel="noreferrer">SANA-WM: Efficient Minute-Scale World Modeling with Hybrid Linear Diffusion Transformer</a>. Zhu et al., 2026.</li>
+          <li id="ref-fasth3"><a href="https://haoailab.com/blogs/fasth3-preview/" target="_blank" rel="noreferrer">FastVideo FastH3 V1: Open-Weight 4-Step Sparse Distilled Minimax H3 for 14x Speedup on NVIDIA Blackwell GPU</a>. FastVideo Team, 2026.</li>
+          <li id="ref-streamingllm"><a href="https://arxiv.org/abs/2309.17453" target="_blank" rel="noreferrer">Efficient Streaming Language Models with Attention Sinks</a>. Xiao et al., 2023.</li>
+          <li id="ref-taylor-calibrate"><a href="https://arxiv.org/abs/2606.16429" target="_blank" rel="noreferrer">Taylor-Calibrate: Principled Initialization for Hybrid Linear Attention Distillation</a>. Zhou et al., 2026.</li>
+          <li id="ref-chimera"><a href="https://arxiv.org/abs/2607.28611" target="_blank" rel="noreferrer">Chimera: Designing and Chinchilla-Scaling Hybrid Visual Diffusion Transformers</a>. Ge et al., 2026.</li>
+          <li id="ref-larry-lora"><a href="https://huggingface.co/larryvrh/MiniMax-H3-Turbo-Lora" target="_blank" rel="noreferrer">MiniMax-H3 Turbo LoRA</a>. LarryVRH, 2026.</li>
+          <li id="ref-dmd2"><a href="https://arxiv.org/abs/2405.14867" target="_blank" rel="noreferrer">Improved Distribution Matching Distillation for Fast Image Synthesis</a>. Yin et al., 2024.</li>
+        </ol>
+
+        <div class="bibtex-section" id="bibtex">
+          <div class="bibtex-head">
+            <h3>BibTeX</h3>
+            <button type="button" data-copy-bibtex aria-live="polite">Copy BibTeX</button>
+          </div>
+          <pre><code data-bibtex>@misc{xi2026videodeltanet,
+  title  = {VideoDeltaNet on MiniMax H3},
+  author = {Haocheng Xi and Yiming Xie and Hexu Zhao and Yiwen Zhang and Michael Liu and Thomas Creavin and Kurt Keutzer and Xiuyu Li and Zhaoyang Lv and Chenfeng Xu and Haiwen Feng},
+  year   = {2026},
+  url    = {https://openvdn.github.io/}
+}</code></pre>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <a class="site-brand footer-brand" href="#top" aria-label="Back to top">
+      <svg class="brand-logo" aria-hidden="true" viewBox="0 0 64 64">
+        <rect width="64" height="64" rx="10"></rect>
+        <path d="M24 14H15v36h9M40 14h9v36h-9"></path>
+      </svg>
+    </a>
+    <span>VDN-H3 · Independent architecture study · 2026</span>
+  </footer>
+</body>
+</html>
