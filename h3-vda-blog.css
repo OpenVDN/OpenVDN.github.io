@@ -4489,3 +4489,38 @@ mjx-container[jax="CHTML"][display="true"] {
   .system-speedup-track i,
   .hardware-toggle-thumb { transition: none; }
 }
+
+/* Keep the VDA derivation legible on narrow screens. The equations use
+   semantic line breaks above; these rules remove the remaining desktop
+   spacing while preserving horizontal scrolling as a last-resort fallback. */
+@media (max-width: 680px) {
+  .equation-card {
+    margin: 24px 0;
+    padding: 17px 12px 18px;
+  }
+
+  .equation-card .equation,
+  #spectrum .equation-card .equation {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .equation-card mjx-container[jax="CHTML"][display="true"],
+  .equation-grid mjx-container[jax="CHTML"][display="true"],
+  #spectrum mjx-container[jax="CHTML"][display="true"] {
+    max-width: 100%;
+    margin: .55em 0 !important;
+    font-size: 88% !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .geometry-comparison-card mjx-container[jax="CHTML"][display="true"] {
+    font-size: 84% !important;
+  }
+
+  .equation-card p {
+    font-size: .8rem;
+    line-height: 1.55;
+  }
+}

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;family=Assistant:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./h3-vda-blog.css?v=20260902-60">
+  <link rel="stylesheet" href="./h3-vda-blog.css?v=20260902-61">
   <script>
     window.MathJax = {
       loader: { load: ['[tex]/ams'] },
@@ -447,9 +447,10 @@
         <div class="equation-card">
           <span class="eq-label">Classical Delta Rule · one token</span>
           <div class="equation">\[
-            \bar S=S_{t-1}\operatorname{Diag}(\alpha),
-            \qquad
-            S_t=\bar S+\beta\big(v-\bar S k\big)k^\top.
+            \begin{aligned}
+            \bar S&=S_{t-1}\operatorname{Diag}(\alpha),\\
+            S_t&=\bar S+\beta\big(v-\bar S k\big)k^\top.
+            \end{aligned}
           \]</div>
           <p>The decay gate first produces \(\bar S\); the scalar \(\beta\) then scales the erase-then-write correction. KDA uses channel-wise \(\alpha\) gates so different feature directions decay at different rates.</p>
         </div>
@@ -466,12 +467,11 @@
           <span class="eq-label">SANA-WM · one parallel batch step</span>
           <div class="equation">\[
             \begin{aligned}
-            \widehat K&=\frac{K}{\sqrt U},
-            \qquad
-            \hat k_u=\frac{k_u}{\sqrt U},\\
+            \widehat K&=\frac{K}{\sqrt U},\\
+            \hat k_u&=\frac{k_u}{\sqrt U},\\[3pt]
             S_{\mathrm{SANA}}
-            &=\bar S+\sum_{u=1}^{U}\beta_u
-              \bigl(v_u-\bar S\hat k_u\bigr)\hat k_u^\top\\
+            &=\bar S+\sum_{u=1}^{U}\beta_u\\[-2pt]
+            &\qquad\bigl(v_u-\bar S\hat k_u\bigr)\hat k_u^\top\\
             &=\bar S\left(I-\frac{A}{U}\right)+\frac{B}{\sqrt U}.
             \end{aligned}
           \]</div>
@@ -489,10 +489,12 @@
         <div class="equation-card">
           <span class="eq-label">The Delta Rule as gradient descent</span>
           <div class="equation">\[
-            \ell(S;k,v)=\frac12\|Sk-v\|_2^2,
-            \qquad
+            \begin{aligned}
+            \ell(S;k,v)&=\frac12\|Sk-v\|_2^2,\\[3pt]
             \bar S-\beta\nabla_S\ell(\bar S;k,v)
-            =\bar S+\beta(v-\bar S k)k^\top.
+            &=\bar S\\[-2pt]
+            &\quad+\beta(v-\bar S k)k^\top.
+            \end{aligned}
           \]</div>
           <p>Instead of taking one independent descent step for every token, we solve the frame-level fitting problem directly.</p>
         </div>
@@ -502,9 +504,11 @@
         <div class="equation-card joint-objective-card">
           <span class="eq-label">Frame-wise regularized objective</span>
           <div class="equation">\[
+            \begin{aligned}
             \min_S\quad
-            \frac12\|S-\bar S\|_F^2
-            +\frac12\sum_{u=1}^{U}\beta_u\|Sk_u-v_u\|_2^2.
+            &\frac12\|S-\bar S\|_F^2\\[-2pt]
+            &+\frac12\sum_{u=1}^{U}\beta_u\|Sk_u-v_u\|_2^2.
+            \end{aligned}
           \]</div>
           <p>The first term preserves existing memory. The second requires one shared state to fit all tokens in the new frame simultaneously.</p>
         </div>
@@ -516,7 +520,8 @@
           <div class="equation">\[
             \begin{aligned}
             0
-            &= (S-\bar S)+\sum_{u=1}^{U}\beta_u(Sk_u-v_u)k_u^\top \\
+            &=S-\bar S\\[-2pt]
+            &\quad+\sum_{u=1}^{U}\beta_u(Sk_u-v_u)k_u^\top \\
             &= S-\bar S+SA-B,\\[3pt]
             S(I+A) &= \bar S+B,\\[3pt]
             S_t &= (\bar S+B)(I+A)^{-1}.
@@ -550,10 +555,10 @@
             \begin{aligned}
             M_u&=I-\beta_u k_u k_u^\top,\\
             M_u k_u
-            &=\left(I-\beta_u k_u k_u^\top\right)k_u
-              =\left(1-\beta_u\lVert k_u\rVert_2^2\right)k_u,\\[3pt]
-            \mu_u&\triangleq1-\beta_u\lVert k_u\rVert_2^2,
-            \qquad M_u k_u=\mu_u k_u,\\[3pt]
+            &=\left(I-\beta_u k_u k_u^\top\right)k_u\\[-2pt]
+            &=\left(1-\beta_u\lVert k_u\rVert_2^2\right)k_u,\\[3pt]
+            \mu_u&\triangleq1-\beta_u\lVert k_u\rVert_2^2,\\
+            M_u k_u&=\mu_u k_u,\\[3pt]
             \lVert M_u\rVert_2\le1
             &\iff |\mu_u|\le1.
             \end{aligned}
@@ -571,15 +576,14 @@
           <div class="equation">\[
             \begin{aligned}
             A
-            &=K^\top\operatorname{Diag}(\beta)K
-              =\sum_{u=1}^{U}\beta_u k_u k_u^\top,\\
+            &=K^\top\operatorname{Diag}(\beta)K\\[-2pt]
+            &=\sum_{u=1}^{U}\beta_u k_u k_u^\top,\\
             x^\top A x
-            &=\sum_{u=1}^{U}\beta_u(k_u^\top x)^2\ge0
-              \quad\text{for every }x,\\[2pt]
-            A
-            &=Q\Lambda Q^\top,
-              \qquad \Lambda=\operatorname{Diag}(\lambda_1,\ldots,\lambda_d),
-              \qquad \lambda_i\ge0.
+            &=\sum_{u=1}^{U}\beta_u(k_u^\top x)^2\\[-2pt]
+            &\ge0\quad\text{for every }x,\\[2pt]
+            A&=Q\Lambda Q^\top,\\
+            \Lambda&=\operatorname{Diag}(\lambda_1,\ldots,\lambda_d),\\
+            \lambda_i&\ge0.
             \end{aligned}
           \]</div>
         </div>
@@ -590,10 +594,11 @@
           <span class="eq-label">Without frame-size scaling · additive transition</span>
           <div class="equation">\[
             \begin{aligned}
-            M_{\Sigma}&=I-A,
-            & A&=\sum_{u=1}^{U}\beta_u k_u k_u^\top,\\
-            \lambda_i(M_{\Sigma})&=1-\lambda_i(A),
-            & \lambda_{\max}(A)&\le\operatorname{tr}(A)=\sum_{u=1}^{U}\beta_u.
+            M_{\Sigma}&=I-A,\\
+            A&=\sum_{u=1}^{U}\beta_u k_u k_u^\top,\\
+            \lambda_i(M_{\Sigma})&=1-\lambda_i(A),\\
+            \lambda_{\max}(A)&\le\operatorname{tr}(A)\\[-2pt]
+            &=\sum_{u=1}^{U}\beta_u.
             \end{aligned}
           \]</div>
         </div>
@@ -611,12 +616,13 @@
           <div class="equation">\[
             \begin{aligned}
             M_{\mathrm{VDA}}
-            &=(I+A)^{-1}=Q(I+\Lambda)^{-1}Q^\top,\\
+            &=(I+A)^{-1}\\[-2pt]
+            &=Q(I+\Lambda)^{-1}Q^\top,\\
             M_{\mathrm{VDA}}q_i
-            &=\frac{1}{1+\lambda_i}q_i,
-            \qquad
+            &=\frac{1}{1+\lambda_i}q_i,\\
             \lVert M_{\mathrm{VDA}}\rVert_2
-            =\max_i\frac{1}{1+\lambda_i}\le1.
+            &=\max_i\frac{1}{1+\lambda_i}\\[-2pt]
+            &\le1.
             \end{aligned}
           \]</div>
         </div>
@@ -635,8 +641,10 @@
         <div class="equation-card">
           <span class="eq-label">Joint solve as a corrected additive update</span>
           <div class="equation">\[
-            (I+A)^{-1}=I-A+A^2-A^3+\cdots,
-            \qquad \rho(A)<1.
+            \begin{aligned}
+            (I+A)^{-1}&=I-A+A^2-A^3+\cdots,\\
+            \rho(A)&<1.
+            \end{aligned}
           \]</div>
         </div>
 
@@ -647,18 +655,26 @@
         <div class="equation-card geometry-comparison-card">
           <span class="eq-label">Two key geometries · readout comparison</span>
           <div class="equation">\[
+            \begin{gathered}
+            \text{repeated keys }(k_u=k):\\[-2pt]
             \begin{aligned}
-            \text{repeated keys }(k_u=k):\qquad
             S_{\mathrm{SANA}}\hat k
-            &=(1-\beta)\,\bar S\hat k+\beta\,\bar v,\\
+            &=(1-\beta)\,\bar S\hat k\\[-2pt]
+            &\quad+\beta\,\bar v,\\
             S_{\mathrm{VDA}}k
-            &=\frac{1}{1+U\beta}\,\bar S k+\frac{U\beta}{1+U\beta}\,\bar v,\\[6pt]
-            \text{orthonormal keys}:\qquad
+            &=\frac{1}{1+U\beta}\,\bar S k\\[-2pt]
+            &\quad+\frac{U\beta}{1+U\beta}\,\bar v
+            \end{aligned}\\[7pt]
+            \text{orthonormal keys}:\\[-2pt]
+            \begin{aligned}
             S_{\mathrm{SANA}}\hat k_j
-            &=\Bigl(1-\frac{\beta}{U}\Bigr)\bar S\hat k_j+\frac{\beta}{U}\,v_j,\\
+            &=\Bigl(1-\frac{\beta}{U}\Bigr)\bar S\hat k_j\\[-2pt]
+            &\quad+\frac{\beta}{U}\,v_j,\\
             S_{\mathrm{VDA}}k_j
-            &=\frac{1}{1+\beta}\,\bar S k_j+\frac{\beta}{1+\beta}\,v_j.
+            &=\frac{1}{1+\beta}\,\bar S k_j\\[-2pt]
+            &\quad+\frac{\beta}{1+\beta}\,v_j
             \end{aligned}
+            \end{gathered}
           \]</div>
           <p>With repeated keys, both methods interpolate toward the consensus target, but SANA-WM’s data weight stays \(\beta\) whether one token or a hundred agree, while VDA’s \(U\beta/(1+U\beta)\) grows with the amount of evidence yet never exceeds one. With orthonormal keys, SANA-WM writes each independent association with only \(\beta/U\)—a penalty imposed by the \(U-1\) unrelated tokens—while VDA gives every direction its full \(\beta/(1+\beta)\).</p>
         </div>
