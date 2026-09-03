@@ -1829,7 +1829,7 @@
           ulysses: "Our next goal is to use parallelization and few-step distillation to accelerate VDN-H3 further. Standard Ulysses shards the sequence across eight H200s so each GPU processes only a fraction of the rows, reducing the tuned one-card reference <strong>from 11.198 to 2.924 s/NFE</strong><sup class=\"note-ref\" id=\"nfe-note-ref\"><a href=\"#nfe-note\">†</a></sup>, a 3.83× speedup. However, this is far from optimal. We observe another speedup opportunity by serving local Softmax and distant VDA on separate GPU groups, rather than asking every GPU to execute both branches.",
           organization: "The residual stream remains sequence-sharded across all eight GPUs: each device owns a contiguous slice and computes QKV only for those rows. <strong>An uneven all-to-all</strong> then gathers the projected heads by branch. Six H200s receive the local-Softmax work, while two receive the VDA state scan. The branches run concurrently, and the split is chosen so that neither side leaves the other waiting.",
           parallelResult: "With real weights on H200, this six-plus-two assignment reaches 2.327 s/NFE, reducing latency by another <strong>20.4% beyond Standard Ulysses</strong>.",
-          overall: "Overall, the DiT denoising process takes 18.3 seconds on 8 H200 GPUs, leading to a <strong>90.5× speedup</strong>."
+          overall: "Overall, the DiT denoising process takes 18.3 seconds on 8 H200 GPUs, leading to a <strong>90.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared against the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>13.5× speedup</strong>."
         },
         values: {
           denseVideo: "27.6 min", denseVideoLabel: "Dense · 50 steps · 1 H200", denseRowLabel: "released model",
@@ -1870,7 +1870,7 @@
           ulysses: "Our next goal is to use parallelization and few step distillation techniques to further accelerate VDN-H3. Standard Ulysses parallelism shards the sequence across 8 B200s, so each GPU processes only a fraction of the sequence or attention heads. This reduces latency <strong>from 6.46s / NFE to 1.62s / NFE</strong><sup class=\"note-ref\" id=\"nfe-note-ref\"><a href=\"#nfe-note\">†</a></sup>, a 3.99x per-step speedup.",
           organization: "The tensor remains sharded along the sequence dimension during QKV projection. After that, an uneven all-to-all gathers the heads in a way that <strong>5 GPUs receive the Softmax branch, and 3 GPUs receive the VDA branch</strong>. This split is chosen based on profiling results.",
           parallelResult: "After both branches finish, a reverse all-to-all sends their outputs back to the original sequence-sharded layout. This design reduces inference latency to <strong>1.405 s / NFE</strong>, reducing the latency by 13.3% beyond the standard Ulysses algorithm.",
-          overall: "Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5x speedup over the dense MiniMax H3 baseline</strong>."
+          overall: "Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared against the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>10.7× speedup</strong>."
         },
         values: {
           denseVideo: "13.95 min", denseVideoLabel: "Dense · 50 steps · 1 B200", denseRowLabel: "production cuDNN Attention",

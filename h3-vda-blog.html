@@ -852,7 +852,7 @@
 
         <p>Few-step distillation provides further gains. Starting from LarryVRH’s community MiniMax-H3 turbo LoRA,<sup><a href="#ref-larry-lora">[16]</a></sup> we continue training it with DMD2<sup><a href="#ref-dmd2">[17]</a></sup> to obtain our own VDN-H3 LoRA for <strong>8-step distillation</strong>. We deliberately avoid an aggressive four-step setting, prioritizing generation quality over latency. An 8-step generation offers better quality-speed trade-off.</p>
 
-        <p data-hardware-copy="overall">Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5x speedup over the dense MiniMax H3 baseline</strong>.</p>
+        <p data-hardware-copy="overall">Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared against the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>10.7× speedup</strong>.</p>
 
         <figure class="viz-card system-speedup-figure" id="system-speedup-figure" aria-labelledby="system-speedup-title">
           <div class="viz-head">
