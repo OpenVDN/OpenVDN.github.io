@@ -959,6 +959,11 @@
         formula: "\\(o_{t,p}^{\\mathrm{far}} = S_t^{\\rightarrow}q_{t,p} + S_t^{\\leftarrow}q_{t,p}\\)",
         copy: "Scans distant video context in both forward and reverse temporal directions."
       },
+      "linear-rmsnorm": {
+        title: "Normalize the distant readout",
+        formula: "\\(\\widehat O_{\\mathrm{far}} = \\operatorname{RMSNorm}(O_{\\mathrm{far}})\\)",
+        copy: "Normalizes each head after the two directional reads are added, before applying the element-wise output gate."
+      },
       "softmax-projection": {
         title: "Softmax gate projection",
         formula: "\\(u_{\\mathrm{sw}} = W_{\\uparrow}W_{\\downarrow}x + b\\)",
@@ -1018,8 +1023,8 @@
       const blockRect = block.getBoundingClientRect();
       const scaleX = svgRect.width / 920;
       const bounds = {
-        left: svgRect.left - canvasRect.left + 20 * scaleX + 8,
-        right: svgRect.left - canvasRect.left + 900 * scaleX - 8,
+        left: Math.max(8, svgRect.left - canvasRect.left + 20 * scaleX + 8),
+        right: Math.min(canvasRect.width - 8, svgRect.left - canvasRect.left + 900 * scaleX - 8),
         top: svgRect.top - canvasRect.top + 14,
         bottom: svgRect.bottom - canvasRect.top - 14
       };

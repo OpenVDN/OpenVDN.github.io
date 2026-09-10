@@ -2682,6 +2682,18 @@ mjx-container[jax="CHTML"][display="true"] {
   padding-bottom: 0;
 }
 
+.branch-diagram-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.branch-diagram-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.branch-scroll-hint { display: none; }
+
 .branch-svg-simple {
   width: 100%;
   min-width: 0;
@@ -2709,6 +2721,15 @@ mjx-container[jax="CHTML"][display="true"] {
 .linear-node {
   fill: var(--accent-soft);
   stroke: var(--accent);
+}
+
+.rmsnorm-node {
+  fill: var(--paper);
+  stroke: var(--accent);
+}
+
+.simple-label.rmsnorm-label {
+  font-weight: 500;
 }
 
 .gate-node {
@@ -2912,19 +2933,28 @@ mjx-container[jax="CHTML"][display="true"] {
 .branch-captions-simple { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 @media (max-width: 680px) {
+  .branch-svg-simple { min-width: 880px; }
+  .branch-scroll-hint {
+    display: block;
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: .75rem;
+    line-height: 1.4;
+  }
+  .branch-captions-simple { grid-template-columns: 1fr; }
   .branch-tooltip {
     max-width: calc(100% - 24px);
     padding: 7px 8px 8px;
-    font-size: .6rem;
+    font-size: .75rem;
     line-height: 1.32;
   }
   .branch-tooltip-title {
     margin-bottom: 2px;
-    font-size: .8rem;
+    font-size: .9rem;
   }
   .branch-tooltip-formula {
     margin: 2px 0;
-    font-size: .64rem;
+    font-size: .8rem;
     line-height: 1.25;
   }
 }
