@@ -321,7 +321,9 @@
 
         <figure class="viz-card branch-figure" id="branch-figure" aria-label="Gated Softmax and Linear Attention branch outputs">
           <div class="branch-stage branch-stage-simple" data-focus="all">
+            <p class="branch-scroll-hint">Scroll horizontally to inspect both branches →</p>
             <div class="branch-canvas">
+              <div class="branch-diagram-scroll" tabindex="0" role="region" aria-label="Scrollable two-branch attention diagram">
               <svg class="branch-svg branch-svg-simple" viewBox="0 -28 920 420" role="img" aria-label="The input splits into Softmax Attention and Linear Attention. The Linear readout is RMS-normalized, then each branch is controlled by its own sigmoid gate, passed through its own output projection, and added.">
                 <defs>
                   <clipPath id="branch-inner-clip">
@@ -379,7 +381,11 @@
                     <text class="simple-title compact-attention-title" x="625" y="263" text-anchor="middle">Linear Attention</text>
                   </g>
 
-                  <path class="simple-path linear-path" d="M625 228 V181"></path>
+                  <path class="simple-path linear-path" d="M625 228 V220 M625 198 V181"></path>
+                  <g class="branch-block" data-branch-block="linear-rmsnorm" tabindex="0" aria-label="RMSNorm on the Linear Attention readout">
+                    <rect class="simple-node rmsnorm-node" x="572" y="198" width="106" height="22" rx="4"></rect>
+                    <text class="simple-label rmsnorm-label" x="625" y="209" text-anchor="middle" dominant-baseline="middle">RMSNorm</text>
+                  </g>
 
                   <g class="branch-block" data-branch-block="linear-multiply" tabindex="0" aria-label="Linear output multiplication">
                     <circle class="simple-operator gate-operator linear-gate" cx="625" cy="164" r="17"></circle>
@@ -424,6 +430,7 @@
                   <path class="simple-path neutral-path input-tail" d="M460 386 V374"></path>
                 </g>
               </svg>
+              </div>
               <div class="branch-tooltip" role="status" aria-live="polite"></div>
             </div>
 
