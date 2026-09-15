@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;family=Assistant:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./h3-vda-blog.css?v=20260910-rmsnorm-2">
+  <link rel="stylesheet" href="./h3-vda-blog.css?v=20260914-sglang-1">
   <script>
     window.MathJax = {
       loader: { load: ['[tex]/ams'] },
@@ -39,7 +39,7 @@
     };
   </script>
   <script defer src="./prompt-data.js?v=20260902-1"></script>
-  <script defer src="./h3-vda-blog.js?v=20260910-rmsnorm-2"></script>
+  <script defer src="./h3-vda-blog.js?v=20260914-sglang-1"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body id="top" class="article-page">
@@ -74,12 +74,12 @@
         </a>
         <a class="article-resource-link" href="https://huggingface.co/OpenVDN/vdn-minimax-h3" target="_blank" rel="noopener noreferrer">
           <span class="article-resource-icon huggingface-icon" aria-hidden="true">🤗</span>
-          <span>Weight</span>
+          <span>Weights</span>
         </a>
       </div>
       <p class="article-subtitle">
-        <span>Generate 14s 768p video in 11.3 seconds on 8 B200</span>
-        <span>Live Text-to-Video Generation. Near Lossless Quality</span>
+        <span>Generate 14.4s 768p video in 9.0 seconds on 8 B200.</span>
+        <span>Live T2VA / I2VA / FL2VA Generation. Near Lossless Quality.</span>
       </p>
       <p class="article-authors">
         <a href="https://haochengxi.github.io/" target="_blank" rel="noopener noreferrer">Haocheng Xi</a><sup>1,*</sup>,
@@ -118,9 +118,9 @@
 
         <p>Attention is the dominant cost of video generation<sup><a href="#ref-sparse-videogen">[1]</a>,<a href="#ref-sparse-videogen2">[2]</a></sup>. On a frontier omni-model like MiniMax H3<sup><a href="#ref-h3-release">[3]</a></sup>, softmax attention over long token sequences accounts for more than 85% of total runtime. To overcome this, frontier LLMs replace softmax, whose cost is quadratic in sequence length, with linear attention<sup><a href="#ref-gdn">[4]</a>,<a href="#ref-kda">[5]</a></sup>. While significantly faster, this comes at the cost of generation quality. For instance, linear attention struggles to maintain global features like subject identity, scene layout, and temporal dependencies over long sequences<sup><a href="#ref-sana">[8]</a>,<a href="#ref-sana-15">[9]</a>,<a href="#ref-sana-video">[10]</a>,<a href="#ref-sana-wm">[11]</a></sup>.</p>
 
-        <p>We propose a hybrid attention architecture<sup><a href="#ref-sla">[6]</a>,<a href="#ref-sla2">[7]</a></sup>, Video DeltaNet (VDN), that approaches the speed of linear attention while maintaining near-lossless quality. We have applied this architecture improvement to the MiniMax H3 model to train VDN-H3. In only 11.23 seconds our model can produce a 14.4 second video clip that is visually nearly indistinguishable from the original H3's output. In effect, it can stream H3-quality generated content continuously on 8 NVIDIA B200.</p>
+        <p>We propose a hybrid attention architecture<sup><a href="#ref-sla">[6]</a>,<a href="#ref-sla2">[7]</a></sup>, Video DeltaNet (VDN), that approaches the speed of linear attention while maintaining near-lossless quality. We apply this architecture to MiniMax H3 to train VDN-H3. With SGLang Diffusion, an 8×B200 configuration denoises a 14.4-second, 768p video in 6.9 seconds and returns the finished video in about 9.0 seconds after warm-up—faster than playback.</p>
 
-        <p>Here is what VDN-H3 produces. Each clip is generated in 11.23 seconds, less time than it takes to watch. This speedup comes with near-lossless visual quality compared to the original MiniMax H3 and demonstrates higher quality and better instruction-following ability than MiniMax FastH3.</p>
+        <p>Here is what VDN-H3 produces. The same checkpoint supports text-to-video and first-frame, last-frame, or first-and-last-frame conditioned generation (T2VA, I2VA, L2VA, and FL2VA). Across these modes, VDN-H3 retains near-lossless visual quality relative to the original MiniMax H3 while demonstrating higher quality and better instruction following than MiniMax FastH3.</p>
 
         <div class="qualitative-results is-featured" id="qualitative-results">
           <div class="qualitative-results-head">
@@ -789,9 +789,9 @@
 
         <p>Having built the training pipeline to convert the base H3 model into a hybrid architecture, we next measure how this translates into <strong>practical inference speedup</strong>.</p>
 
-        <p data-hardware-copy="overview">On a single B200, the 50-step Dense Attention DiT takes about 13.95 minutes to generate a 15 second, 768p video. VDN-H3 reduces this to about <strong>5.35 minutes</strong> with optimized kernels and FP8 linear layers.</p>
+        <p data-hardware-copy="overview">On a single B200, the 50-NFE Dense Attention DiT takes about 13.95 minutes to denoise a 14.4-second, 768p video workload. VDN-H3 reduces this to about <strong>5.34 minutes</strong> with optimized kernels and FP8 linear layers.</p>
 
-        <p data-hardware-copy="block">To see where the gain comes from, we first isolate a single H3 block. Dense H3 takes 332.5ms on a single B200. By applying Video Delta Attention and Sliding Window Softmax, this number is reduced to 192.1ms. With optimized inference kernels and FP8 linear attention, we achieve 125.3ms inference speed per layer, corresponding to <strong>2.65x speedup</strong>.</p>
+        <p data-hardware-copy="block">To see where the gain comes from, we first isolate a single H3 block. Dense H3 takes 332.5ms on a single B200. By applying Video Delta Attention and Sliding Window Softmax, this number is reduced to 192.1ms. With optimized inference kernels and FP8 linear layers, we achieve 125.3ms inference speed per layer, corresponding to <strong>2.65x speedup</strong>.</p>
 
         <figure class="viz-card latency-figure" id="latency-figure" aria-labelledby="latency-title">
           <div class="viz-head">
@@ -802,9 +802,9 @@
           </div>
 
           <div class="latency-stage">
-            <div class="latency-context" aria-label="Approximate end-to-end denoising time">
-              <div class="latency-stat"><strong data-benchmark="denseVideo">13.95 min</strong><span data-benchmark="denseVideoLabel">Dense · 50 steps · 1 B200</span></div>
-              <div class="latency-stat is-result"><strong data-benchmark="optimizedVideo">5.34 min</strong><span data-benchmark="optimizedVideoLabel">VDN-H3 · 50 steps · 1 B200</span></div>
+            <div class="latency-context" aria-label="Approximate DiT denoising time">
+              <div class="latency-stat"><strong data-benchmark="denseVideo">13.95 min</strong><span data-benchmark="denseVideoLabel">Dense · 50 NFE · 1 B200</span></div>
+              <div class="latency-stat is-result"><strong data-benchmark="optimizedVideo">5.34 min</strong><span data-benchmark="optimizedVideoLabel">VDN-H3 · 50 NFE · 1 B200</span></div>
             </div>
 
             <div class="latency-ladder" aria-label="Latency progression from block optimization to end-to-end acceleration">
@@ -873,9 +873,9 @@
 
         <p data-hardware-copy="parallelResult">After both branches finish, a reverse all-to-all sends their outputs back to the original sequence-sharded layout. This design reduces inference latency to <strong>1.405 s / NFE</strong>, reducing the latency by 13.3% beyond the standard Ulysses algorithm.</p>
 
-        <p>Few-step distillation provides further gains. Starting from LarryVRH’s community MiniMax-H3 turbo LoRA,<sup><a href="#ref-larry-lora">[16]</a></sup> we continue training it with DMD2<sup><a href="#ref-dmd2">[17]</a></sup> to obtain our own VDN-H3 LoRA for <strong>8-step distillation</strong>. We deliberately avoid an aggressive four-step setting, prioritizing generation quality over latency. An 8-step generation offers better quality-speed trade-off.</p>
+        <p>Few-step distillation provides further gains. Starting from LarryVRH’s community MiniMax-H3 turbo LoRA,<sup><a href="#ref-larry-lora">[16]</a></sup> we continue training it with DMD2<sup><a href="#ref-dmd2">[17]</a></sup> to obtain our own VDN-H3 LoRA for <strong>8-NFE generation</strong>. We deliberately avoid an aggressive 4-NFE setting, prioritizing generation quality over latency. Eight NFE offers a better quality-speed trade-off.</p>
 
-        <p data-hardware-copy="overall">Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared against the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>10.7× speedup</strong>.</p>
+        <p data-hardware-copy="overall">On the OpenVDN reference stack, the 8-NFE DiT denoising loop takes 11.23 seconds for a 14.4-second video workload, a <strong>74.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared with the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>10.7× speedup</strong>.</p>
 
         <figure class="viz-card system-speedup-figure" id="system-speedup-figure" aria-labelledby="system-speedup-title">
           <div class="viz-head">
@@ -885,21 +885,36 @@
             </div>
           </div>
 
-          <div class="system-speedup-stage" aria-label="End-to-end DiT denoising time after standard Ulysses, branch-specialized parallelism, and eight-step distillation">
+          <div class="system-speedup-stage" aria-label="DiT denoising time after standard Ulysses, branch-specialized parallelism, and eight-NFE distillation">
             <div class="system-speedup-row is-ulysses">
-              <div class="system-speedup-head"><strong>Standard Ulysses</strong><span data-benchmark="systemHardware50">50 steps · 8 B200s</span><b data-benchmark="ulyssesTime">1.35 min</b></div>
+              <div class="system-speedup-head"><strong>Standard Ulysses</strong><span data-benchmark="systemHardware50">50 NFE · 8 B200s</span><b data-benchmark="ulyssesTime">1.35 min</b></div>
               <div class="system-speedup-track"><i style="--system-width: 100%"></i></div>
             </div>
             <div class="system-speedup-row is-parallel">
-              <div class="system-speedup-head"><strong>+ Branch-specialized parallelism</strong><span data-benchmark="systemHardware50">50 steps · 8 B200s</span><b data-benchmark="parallelTime">1.17 min</b></div>
+              <div class="system-speedup-head"><strong>+ Branch-specialized parallelism</strong><span data-benchmark="systemHardware50">50 NFE · 8 B200s</span><b data-benchmark="parallelTime">1.17 min</b></div>
               <div class="system-speedup-track"><i style="--system-width: 86.7%" data-system-width="parallel"></i><em data-benchmark="parallelGain">13.3% lower latency than Ulysses</em></div>
             </div>
             <div class="system-speedup-row is-distilled">
-              <div class="system-speedup-head"><strong>+ Eight-step distillation</strong><span data-benchmark="systemHardware8">8 steps · 8 B200s</span><b data-benchmark="fewStepTime">11.23 s</b></div>
+              <div class="system-speedup-head"><strong>+ Eight-NFE distillation</strong><span data-benchmark="systemHardware8">8 NFE · 8 B200s</span><b data-benchmark="fewStepTime">11.23 s</b></div>
               <div class="system-speedup-track"><i style="--system-width: 14.9%" data-system-width="fewStep"></i><em data-benchmark="overallGain">74.5× vs. dense 50-NFE</em></div>
             </div>
           </div>
         </figure>
+
+        <p>Native SGLang serving achieves the highest reported speedup for VDN-H3. After warm-up, the 8×B200 configuration denoises in 6.9 seconds and returns the finished 14.4-second video in about 9.0 seconds. See the <a href="https://github.com/sgl-project/sglang/blob/main/docs/cookbook/diffusion/MiniMax/MiniMax-H3.mdx#7-vdn-h3-hybrid-attention-8-step-distill" target="_blank" rel="noopener noreferrer">MiniMax-H3 cookbook</a> for more details.</p>
+
+        <aside class="sglang-result" aria-labelledby="sglang-result-title">
+          <div class="sglang-result-copy">
+            <span class="sglang-result-kicker">Latest serving result</span>
+            <h3 id="sglang-result-title">VDN-H3 in SGLang Diffusion</h3>
+          </div>
+          <div class="sglang-scale-grid" aria-label="SGLang VDN-H3 denoising time by B200 GPU count">
+            <div><span>1×B200</span><strong>47.6s</strong></div>
+            <div><span>2×B200</span><strong>25.9s</strong></div>
+            <div><span>4×B200</span><strong>13.1s</strong></div>
+            <div class="is-fastest"><span>8×B200</span><strong>6.9s</strong></div>
+          </div>
+        </aside>
       </section>
 
       <section id="results">
@@ -912,7 +927,7 @@
 
       <section id="acknowledgements">
         <h2>Acknowledgements</h2>
-        <p>We thank the authors and maintainers of Gated Delta Networks,<sup><a href="#ref-gdn">[4]</a></sup> Kimi Linear,<sup><a href="#ref-kda">[5]</a></sup> SLA and SLA2,<sup><a href="#ref-sla">[6]</a><a href="#ref-sla2">[7]</a></sup> SANA-WM,<sup><a href="#ref-sana-wm">[11]</a></sup> the MiniMax-H3 Turbo LoRA,<sup><a href="#ref-larry-lora">[16]</a></sup> and TurboDiffusion,<sup><a href="#ref-turbodiffusion">[18]</a></sup> whose open research and releases helped motivate or enable this project. We thank Ligeng Zhu, Dongyun Zou, and <a href="https://github.com/mit-han-lab/kernel-design-agents" target="_blank" rel="noreferrer">Kernel Design Agents (KDA)</a> for kernel design support. We acknowledge Haoyi Zhu’s <em>Reflections on Video&nbsp;DeltaNet</em><sup><a href="#ref-haoyi-video-deltanet">[19]</a></sup> as concurrent work.</p>
+        <p>We thank the authors and maintainers of Gated Delta Networks,<sup><a href="#ref-gdn">[4]</a></sup> Kimi Linear,<sup><a href="#ref-kda">[5]</a></sup> SLA and SLA2,<sup><a href="#ref-sla">[6]</a><a href="#ref-sla2">[7]</a></sup> SANA-WM,<sup><a href="#ref-sana-wm">[11]</a></sup> the MiniMax-H3 Turbo LoRA,<sup><a href="#ref-larry-lora">[16]</a></sup> and TurboDiffusion,<sup><a href="#ref-turbodiffusion">[18]</a></sup> whose open research and releases helped motivate or enable this project. We also thank <a href="https://github.com/fla-org/flash-linear-attention" target="_blank" rel="noreferrer">Flash Linear Attention (FLA)</a> and <a href="https://pytorch.org/docs/stable/nn.attention.flex_attention.html" target="_blank" rel="noreferrer">FlexAttention</a> for their open-source attention implementations. We thank Ligeng Zhu, Dongyun Zou, and <a href="https://github.com/mit-han-lab/kernel-design-agents" target="_blank" rel="noreferrer">Kernel Design Agents (KDA)</a> for kernel design support. We acknowledge Haoyi Zhu’s <em>Reflections on Video&nbsp;DeltaNet</em><sup><a href="#ref-haoyi-video-deltanet">[19]</a></sup> as concurrent work.</p>
       </section>
 
       <section id="references">

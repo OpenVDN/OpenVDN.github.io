@@ -1829,18 +1829,18 @@
     const hardwareBenchmarks = {
       h200: {
         copy: {
-          overview: "On a single H200, the 50-step DiT denoising loop for a 15-second 768p video takes about 27.6 minutes with dense H3. VDN-H3 reduces the same one-card, 50-step workload to about 9.4 minutes with optimized inference kernels and FP8 Linear Layers. Using our customized parallelization techniques across eight H200s, the 50-step denoising time falls to about 1.94 minutes, a 14.2× overall speedup relative to dense H3 on one H200. With eight-step generation on the same eight H200s, DiT denoising takes 18.3 seconds; measured against the original one-H200, 50-step dense baseline, the <strong>complete speedup is 90.5×</strong>.",
+          overview: "On a single H200, the 50-NFE DiT denoising loop for a 14.4-second, 768p video workload takes about 27.6 minutes with dense H3. VDN-H3 reduces the same one-card workload to about 9.4 minutes with optimized inference kernels and FP8 linear layers. Using our customized parallelization techniques across eight H200s, the 50-NFE denoising time falls to about 1.94 minutes, a 14.2× overall speedup relative to dense H3 on one H200. With 8-NFE generation on the same eight H200s, DiT denoising takes 18.3 seconds; measured against the original one-H200, 50-NFE dense baseline, the <strong>complete speedup is 90.5×</strong>.",
           block: "To see where the gain comes from, we first isolate a single H3 block. Dense H3 takes 657.9 ms on H200. Tuning the local Softmax and distant VDA paths reduces the hybrid block to 293.8 ms. Dedicated kernels accelerate windowed Softmax, VDA state updates and readouts, and the final gating and scatter operations; cached geometry avoids repeated setup, while FP8 accelerates the wide Linear Layers. The complete stack reaches 223.0 ms, a measured <strong>2.95× reduction in latency</strong>.",
           ulysses: "Our next goal is to use parallelization and few-step distillation to accelerate VDN-H3 further. Standard Ulysses shards the sequence across eight H200s so each GPU processes only a fraction of the rows, reducing the tuned one-card reference <strong>from 11.198 to 2.924 s/NFE</strong><sup class=\"note-ref\" id=\"nfe-note-ref\"><a href=\"#nfe-note\">†</a></sup>, a 3.83× speedup. However, this is far from optimal. We observe another speedup opportunity by serving local Softmax and distant VDA on separate GPU groups, rather than asking every GPU to execute both branches.",
           organization: "The residual stream remains sequence-sharded across all eight GPUs: each device owns a contiguous slice and computes QKV only for those rows. <strong>An uneven all-to-all</strong> then gathers the projected heads by branch. Six H200s receive the local-Softmax work, while two receive the VDA state scan. The branches run concurrently, and the split is chosen so that neither side leaves the other waiting.",
           parallelResult: "With real weights on H200, this six-plus-two assignment reaches 2.327 s/NFE, reducing latency by another <strong>20.4% beyond Standard Ulysses</strong>.",
-          overall: "Overall, the DiT denoising process takes 18.3 seconds on 8 H200 GPUs, leading to a <strong>90.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared against the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>13.5× speedup</strong>."
+          overall: "On the OpenVDN reference stack, the 8-NFE DiT denoising loop takes 18.3 seconds on 8 H200 GPUs, a <strong>90.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared with the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>13.5× speedup</strong>."
         },
         values: {
-          denseVideo: "27.6 min", denseVideoLabel: "Dense · 50 steps · 1 H200", denseRowLabel: "released model",
-          optimizedVideo: "9.4 min", optimizedVideoLabel: "VDN-H3 · 50 steps · 1 H200",
+          denseVideo: "27.6 min", denseVideoLabel: "Dense · 50 NFE · 1 H200", denseRowLabel: "released model",
+          optimizedVideo: "9.4 min", optimizedVideoLabel: "VDN-H3 · 50 NFE · 1 H200",
           denseBlock: "657.9 ms", hybridBlock: "293.8 ms", hybridVideo: "12.41 min", optimizedBlock: "223.0 ms",
-          systemHardware50: "50 steps · 8 H200s", systemHardware8: "8 steps · 8 H200s",
+          systemHardware50: "50 NFE · 8 H200s", systemHardware8: "8 NFE · 8 H200s",
           ulyssesTime: "2.44 min", parallelTime: "1.94 min", fewStepTime: "18.3 s",
           parallelGain: "20.4% faster than Ulysses", overallGain: "90.5× vs. dense 50-NFE"
         },
@@ -1870,18 +1870,18 @@
       },
       b200: {
         copy: {
-          overview: "On a single B200, the 50-step Dense Attention DiT takes about 13.95 minutes to generate a 15 second, 768p video. VDN-H3 reduces this to about <strong>5.35 minutes</strong> with optimized kernels and FP8 linear layers.",
-          block: "To see where the gain comes from, we first isolate a single H3 block. Dense H3 takes 332.5ms on a single B200. By applying Video Delta Attention and Sliding Window Softmax, this number is reduced to 192.1ms. With optimized inference kernels and FP8 linear attention, we achieve 125.3ms inference speed per layer, corresponding to <strong>2.65x speedup</strong>.",
+          overview: "On a single B200, the 50-NFE Dense Attention DiT takes about 13.95 minutes to denoise a 14.4-second, 768p video workload. VDN-H3 reduces this to about <strong>5.34 minutes</strong> with optimized kernels and FP8 linear layers.",
+          block: "To see where the gain comes from, we first isolate a single H3 block. Dense H3 takes 332.5ms on a single B200. By applying Video Delta Attention and Sliding Window Softmax, this number is reduced to 192.1ms. With optimized inference kernels and FP8 linear layers, we achieve 125.3ms inference speed per layer, corresponding to <strong>2.65x speedup</strong>.",
           ulysses: "Our next goal is to use parallelization and few step distillation techniques to further accelerate VDN-H3. Standard Ulysses parallelism shards the sequence across 8 B200s, so each GPU processes only a fraction of the sequence or attention heads. This reduces latency <strong>from 6.46s / NFE to 1.62s / NFE</strong><sup class=\"note-ref\" id=\"nfe-note-ref\"><a href=\"#nfe-note\">†</a></sup>, a 3.99x per-step speedup.",
           organization: "The tensor remains sharded along the sequence dimension during QKV projection. After that, an uneven all-to-all gathers the heads in a way that <strong>5 GPUs receive the Softmax branch, and 3 GPUs receive the VDA branch</strong>. This split is chosen based on profiling results.",
           parallelResult: "After both branches finish, a reverse all-to-all sends their outputs back to the original sequence-sharded layout. This design reduces inference latency to <strong>1.405 s / NFE</strong>, reducing the latency by 13.3% beyond the standard Ulysses algorithm.",
-          overall: "Overall, the DiT denoising process only takes 11.23 seconds to generate a 14.3s video, leading to a <strong>74.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared against the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>10.7× speedup</strong>."
+          overall: "On the OpenVDN reference stack, the 8-NFE DiT denoising loop takes 11.23 seconds for a 14.4-second video workload, a <strong>74.5× speedup over the dense MiniMax H3 single-GPU baseline</strong>. Compared with the dense MiniMax H3 8-GPU baseline, VDN-H3 still demonstrates a <strong>10.7× speedup</strong>."
         },
         values: {
-          denseVideo: "13.95 min", denseVideoLabel: "Dense · 50 steps · 1 B200", denseRowLabel: "production cuDNN Attention",
-          optimizedVideo: "5.34 min", optimizedVideoLabel: "VDN-H3 · 50 steps · 1 B200",
+          denseVideo: "13.95 min", denseVideoLabel: "Dense · 50 NFE · 1 B200", denseRowLabel: "production cuDNN Attention",
+          optimizedVideo: "5.34 min", optimizedVideoLabel: "VDN-H3 · 50 NFE · 1 B200",
           denseBlock: "332.5 ms", hybridBlock: "192.1 ms", hybridVideo: "8.21 min", optimizedBlock: "125.3 ms",
-          systemHardware50: "50 steps · 8 B200s", systemHardware8: "8 steps · 8 B200s",
+          systemHardware50: "50 NFE · 8 B200s", systemHardware8: "8 NFE · 8 B200s",
           ulyssesTime: "1.35 min", parallelTime: "1.17 min", fewStepTime: "11.23 s",
           parallelGain: "13.3% lower latency than Ulysses", overallGain: "74.5× vs. dense 50-NFE"
         },
